@@ -25,6 +25,9 @@
     "active": true,
     "targets": ["deb"],
     "category": "Utility",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "copyright": "Copyright (c) 2026 The PYLA Project Authors",
     "shortDescription": "Gestione grafica del firewall UFW",
     "icon": [
       "icons/32x32.png",

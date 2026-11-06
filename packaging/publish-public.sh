@@ -24,6 +24,11 @@ rsync -a --delete --exclude=.git --exclude=target --exclude=.idea "$ROOT/" "$WOR
 rm -f "$WORK/CNAME"
 rm -rf "$WORK/docs"
 
+# identita' del repository pubblico: il progetto, non una persona (evita di
+# esporre l'email di lavoro dell'autore dei commit locali)
+git -C "$WORK" config user.name "PYLA Project"
+git -C "$WORK" config user.email "maintainers@pyla.space"
+
 git -C "$WORK" add -A
 if git -C "$WORK" diff --cached --quiet; then
     echo "nessuna differenza rispetto a $REMOTE#$BRANCH"
@@ -39,7 +44,7 @@ if [ "$DRY" = 1 ]; then
     exit 0
 fi
 
-git -C "$WORK" commit -q -m "Snapshot da $SRC: Pyla (crate pyla-core/pyla-helper, helper polkit space.pyla.app, exposure per famiglia)"
+git -C "$WORK" commit -q --author="PYLA Project <maintainers@pyla.space>" -m "Snapshot da $SRC: Pyla (crate pyla-core/pyla-helper, helper polkit space.pyla.app, exposure per famiglia)"
 git -C "$WORK" push "$REMOTE" "HEAD:$BRANCH"
 git -C "$ROOT" worktree remove --force "$WORK"
 echo "pubblicato: $REMOTE#$BRANCH (contenuto di $SRC)"

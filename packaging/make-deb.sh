@@ -7,6 +7,7 @@ set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 ID=space.pyla.app
+PACKAGE=pyla
 ARCH=amd64
 OUT="$ROOT/target/dist"
 
@@ -55,6 +56,9 @@ install -Dm0644 "$ROOT/src-tauri/icons/32x32.png" "$STAGE/usr/share/icons/hicolo
 install -Dm0644 "$ROOT/src-tauri/icons/128x128.png" "$STAGE/usr/share/icons/hicolor/128x128/apps/$ID.png"
 install -Dm0644 "$ROOT/src-tauri/icons/128x128@2x.png" "$STAGE/usr/share/icons/hicolor/256x256/apps/$ID.png"
 install -Dm0644 "$ROOT/src-tauri/icons/icon.png" "$STAGE/usr/share/icons/hicolor/512x512/apps/$ID.png"
+
+# licenza nel posto atteso da dpkg/lintian: /usr/share/doc/<pkg>/copyright
+install -Dm0644 "$ROOT/LICENSE" "$STAGE/usr/share/doc/$PACKAGE/copyright"
 
 SIZE=$(du -sk "$STAGE" --exclude=DEBIAN | cut -f1)
 cat > "$STAGE/DEBIAN/control" <<EOF

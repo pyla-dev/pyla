@@ -207,3 +207,5 @@ Questions and security reports: <maintainers@pyla.space>.
 ## License
 
 Released under the [MIT License](LICENSE).
+
+Copyright (c) 2026 The PYLA Project Authors.
