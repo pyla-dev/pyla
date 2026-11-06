@@ -1,6 +1,6 @@
 [package]
 name = "pyla"
-description = "Pyla — gestione grafica del firewall UFW con set di regole"
+description = "PYLA — gestione grafica del firewall UFW con set di regole"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

@@ -1,4 +1,4 @@
-//! Nucleo di Pyla: modello delle regole, validazione, traduzione in argomenti
+//! Nucleo di PYLA: modello delle regole, validazione, traduzione in argomenti
 //! `ufw`, lettura dello stato di UFW e confronto tra stato reale e desiderato.
 //!
 //! Non esegue nulla: lo usano sia l'app (senza privilegi) sia `pyla-helper`

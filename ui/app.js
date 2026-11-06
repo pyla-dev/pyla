@@ -146,7 +146,7 @@ Object.assign(EXACT, {
   "Nuovo set di regole": "New rule set",
   "Rinomina set": "Rename set",
   "Duplica set": "Duplicate set",
-  "È il set applicato: le regole in UFW restano come sono, ma Pyla non lo considererà più attivo.": "This is the applied set: UFW rules stay as they are, but Pyla will no longer consider it active.",
+  "È il set applicato: le regole in UFW restano come sono, ma PYLA non lo considererà più attivo.": "This is the applied set: UFW rules stay as they are, but PYLA will no longer consider it active.",
   "Le regole in UFW non vengono toccate.": "UFW rules are left untouched.",
   "Autenticazione…": "Authenticating…",
   "Regole importate da UFW": "Rules imported from UFW",
@@ -154,7 +154,7 @@ Object.assign(EXACT, {
   "Conferma": "Confirm",
   "Chiudi": "Close",
   "Lettura UFW…": "Reading UFW…",
-  "In UFW ci sono regole che Pyla non sa gestire (route o per applicazione).": "UFW contains rules Pyla cannot manage (route or application rules).",
+  "In UFW ci sono regole che PYLA non sa gestire (route o per applicazione).": "UFW contains rules PYLA cannot manage (route or application rules).",
   "UFW contiene già esattamente queste regole, nello stesso ordine. Niente da fare.": "UFW already contains exactly these rules, in the same order. Nothing to do.",
   "Le regole sono le stesse ma cambia l'ordine.": "Same rules, different order.",
   "UFW riscrive tutte le regole utente nell'ordine del set. Le connessioni già aperte non cadono.": "UFW rewrites all user rules in set order. Already-open connections are not dropped.",
@@ -295,7 +295,7 @@ PATTERNS.push(
   // ---- errori e messaggi del backend (db, helper, validazione, piano, esposizione) ----
   [/^risposta di ubuntu\.com non valida: /, "invalid response from ubuntu.com: "],
   [/^nome già usato \((.*)\)$/, "name already used ($1)"],
-  [/^il database è di una versione più recente di Pyla \(schema (\d+)\)$/, "the database is from a newer Pyla version (schema $1)"],
+  [/^il database è di una versione più recente di PYLA \(schema (\d+)\)$/, "the database is from a newer PYLA version (schema $1)"],
   [/^set (\d+) non trovato$/, "set $1 not found"],
   [/^regola (\d+) non trovata$/, "rule $1 not found"],
   [/^helper non installato in (\S+): esegui /, "helper not installed in $1: run "],
@@ -319,8 +319,8 @@ PATTERNS.push(
   [/^backup di (\S+): /, "backup of $1: "],
   [/^ripristino di (\S+): /, "restore of $1: "],
   [/^avvio di (\S+): /, "starting $1: "],
-  [/^in UFW ci sono regole che Pyla non gestisce, rimuovile prima con ufw o Gufw: /,
-    "UFW has rules Pyla does not manage, remove them first with ufw or Gufw: "],
+  [/^in UFW ci sono regole che PYLA non gestisce, rimuovile prima con ufw o Gufw: /,
+    "UFW has rules PYLA does not manage, remove them first with ufw or Gufw: "],
   [/^un comando ufw non è riuscito/, "a ufw command failed"],
   [/^dopo l'applicazione le regole in UFW non coincidono con il set/, "after applying, UFW rules do not match the set"],
   [/^ufw reload dopo il ripristino non riuscito/, "ufw reload after restore failed"],
@@ -788,7 +788,7 @@ function duplicateSet() {
 async function deleteSet() {
   const rs = state.selected;
   const extra = rs.active
-    ? "È il set applicato: le regole in UFW restano come sono, ma Pyla non lo considererà più attivo."
+    ? "È il set applicato: le regole in UFW restano come sono, ma PYLA non lo considererà più attivo."
     : "Le regole in UFW non vengono toccate.";
   if (!(await confirmDialog(`Eliminare il set «${rs.name}»?`, extra))) return;
   await call("delete_ruleset", { id: rs.id });
@@ -851,7 +851,7 @@ async function previewApply(button) {
   if (p.unsupported.length) {
     parts.push(
       h("p", { class: "error" },
-        "In UFW ci sono regole che Pyla non sa gestire (route o per applicazione). ",
+        "In UFW ci sono regole che PYLA non sa gestire (route o per applicazione). ",
         "Rimuovile con ufw o Gufw prima di applicare:\n" + p.unsupported.join("\n"))
     );
     infoDialog(parts, [closeButton()]);

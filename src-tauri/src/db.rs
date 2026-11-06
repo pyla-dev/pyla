@@ -1,5 +1,5 @@
 //! Database locale (SQLite, WAL): set di regole, regole con flag `enabled`,
-//! storico delle applicazioni. È la fonte di verità di Pyla: UFW contiene solo
+//! storico delle applicazioni. È la fonte di verità di PYLA: UFW contiene solo
 //! le regole abilitate del set applicato.
 
 use std::path::Path;
@@ -185,7 +185,7 @@ impl Db {
             }
         } else if version > SCHEMA_VERSION {
             return Err(format!(
-                "il database è di una versione più recente di Pyla (schema {version})"
+                "il database è di una versione più recente di PYLA (schema {version})"
             ));
         }
         Ok(Db { conn })

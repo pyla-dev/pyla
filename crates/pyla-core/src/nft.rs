@@ -1,5 +1,5 @@
 //! Lettura del ruleset completo del kernel dal testo di `nft list ruleset`,
-//! solo per mostrarlo (Pyla non modifica nulla fuori dalle regole utente di UFW).
+//! solo per mostrarlo (PYLA non modifica nulla fuori dalle regole utente di UFW).
 
 use serde::{Deserialize, Serialize};
 

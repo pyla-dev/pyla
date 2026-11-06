@@ -1,4 +1,4 @@
-//! pyla-helper — l'unica parte di Pyla che gira come root.
+//! pyla-helper — l'unica parte di PYLA che gira come root.
 //!
 //! Avviato da pkexec (policy `space.pyla.app.helper`), parla JSON:
 //!
@@ -197,7 +197,7 @@ fn apply() -> Result<ApplyReport, String> {
 
     if !plan.unsupported.is_empty() {
         return Err(format!(
-            "in UFW ci sono regole che Pyla non gestisce, rimuovile prima con ufw o Gufw: {}",
+            "in UFW ci sono regole che PYLA non gestisce, rimuovile prima con ufw o Gufw: {}",
             plan.unsupported.join(" | ")
         ));
     }

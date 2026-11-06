@@ -415,5 +415,5 @@ fn main() {
             mitigate,
         ])
         .run(tauri::generate_context!())
-        .expect("avvio di Pyla");
+        .expect("avvio di PYLA");
 }

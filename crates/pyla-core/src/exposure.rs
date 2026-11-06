@@ -1012,7 +1012,7 @@ table ip6 filter {
         );
     }
 
-    /// Ruleset nft live: prima l'helper Pyla (root, stesso testo visto dalla GUI),
+    /// Ruleset nft live: prima l'helper PYLA (root, stesso testo visto dalla GUI),
     /// poi `nft list ruleset` (da root) e infine il dump in `/tmp/nft-live.txt`.
     /// Senza root `nft list ruleset` non restituisce nulla e ogni listener
     /// risulterebbe "ignota": per questo l'helper e' la via primaria.

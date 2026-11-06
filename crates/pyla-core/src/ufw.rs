@@ -16,7 +16,7 @@ pub const USER6_RULES: &str = "/etc/ufw/user6.rules";
 pub const UFW_CONF: &str = "/etc/ufw/ufw.conf";
 pub const UFW_DEFAULTS: &str = "/etc/default/ufw";
 
-/// Una regola presente in UFW. `spec` è `None` quando Pyla non sa
+/// Una regola presente in UFW. `spec` è `None` quando PYLA non sa
 /// rappresentarla (regole route, regole per applicazione, ...).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LiveRule {
@@ -193,7 +193,7 @@ pub fn parse_tuple(line: &str, v6: bool) -> Option<LiveRule> {
 }
 
 /// Unisce le regole di `user.rules` e `user6.rules`: una regola con sorgente e
-/// destinazione `any` UFW la scrive in entrambi i file, ma per Pyla è una sola.
+/// destinazione `any` UFW la scrive in entrambi i file, ma per PYLA è una sola.
 pub fn merge_rules(v4: &str, v6: &str) -> Vec<LiveRule> {
     let mut out: Vec<LiveRule> = v4.lines().filter_map(|l| parse_tuple(l, false)).collect();
     for r in v6.lines().filter_map(|l| parse_tuple(l, true)) {

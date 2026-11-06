@@ -5,7 +5,7 @@
 //! sottosistema. Alcune CVE hanno un'associazione esplicita (es. CVE-2026-98432,
 //! che sta nel TCP IPv4 ma è sfruttata via MPTCP).
 //!
-//! Tutte le mitigazioni sono reversibili e vivono in due soli file gestiti da Pyla:
+//! Tutte le mitigazioni sono reversibili e vivono in due soli file gestiti da PYLA:
 //! `/etc/sysctl.d/90-pyla-mitigations.conf` e `/etc/modprobe.d/pyla-mitigations.conf`.
 //! Ogni blocco inizia con `# pyla:<id>`, così il file si rigenera senza perdere nulla.
 //! La lettura dello stato non richiede root; la scrittura la fa `pyla-helper`.
@@ -191,7 +191,7 @@ pub fn parse_active(text: &str) -> Vec<String> {
         .collect()
 }
 
-const HEADER: &str = "# Gestito da Pyla (mitigazioni CVE temporanee). Modificare dall'app.\n";
+const HEADER: &str = "# Gestito da PYLA (mitigazioni CVE temporanee). Modificare dall'app.\n";
 
 pub fn render_sysctl(active: &[&Mitigation]) -> String {
     let mut s = String::from(HEADER);
@@ -229,7 +229,7 @@ pub struct Check {
     pub impact: &'static str,
     /// Applicabile con il pulsante Mitiga (false per le sole verifiche).
     pub actionable: bool,
-    /// Configurata nei file di Pyla.
+    /// Configurata nei file di PYLA.
     pub configured: bool,
     /// mitigata | al-riavvio | esposta | non-in-uso | in-uso
     pub state: &'static str,

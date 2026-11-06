@@ -86,7 +86,7 @@ pub enum LogLevel {
     LogAll,
 }
 
-/// Una regola UFW, nella forma che Pyla sa rappresentare.
+/// Una regola UFW, nella forma che PYLA sa rappresentare.
 /// Gli indirizzi sono `"any"`, un IP o una rete CIDR; le porte sono
 /// `22`, `80,443` oppure `6000:6007`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

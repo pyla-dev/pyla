@@ -24,7 +24,7 @@ pub struct Plan {
     pub added: Vec<RuleSpec>,
     /// Stesse regole ma in ordine diverso.
     pub reordered: bool,
-    /// Regole che Pyla non sa gestire: il piano non è applicabile finché ci sono.
+    /// Regole che PYLA non sa gestire: il piano non è applicabile finché ci sono.
     pub unsupported: Vec<String>,
     /// Argomenti `ufw`, nell'ordine di esecuzione.
     pub commands: Vec<Vec<String>>,
