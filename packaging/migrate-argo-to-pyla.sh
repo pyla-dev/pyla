@@ -2,26 +2,46 @@
 # Migra l'installazione di Argo a PYLA: helper, policy polkit, stato delle
 # mitigazioni, backup e dati utente. Da eseguire DOPO `cargo build --release -p
 # pyla-helper` e prima di avviare la prima copia di PYLA.
-#   sudo packaging/migrate-argo-to-pyla.sh            (applica)
-#   sudo packaging/migrate-argo-to-pyla.sh --dry-run  (mostra soltanto)
+#   sudo packaging/migrate-argo-to-pyla.sh <vecchio-id> --dry-run  (mostra soltanto)
+#   sudo packaging/migrate-argo-to-pyla.sh <vecchio-id>            (applica)
+# <vecchio-id>: ls /usr/share/polkit-1/actions | grep -i argo  (senza .policy)
 set -eu
 
 # OLD_ID: identificatore legacy presente sulla macchina (varia da installazione a
 # installazione). Va passato come argomento, perche' non e' un identificatore del
 # progetto: NEW_ID invece e' fisso.
-OLD_ID="${1:-}"
+DRY=0
+OLD_ID=""
+for a in "$@"; do
+    case "$a" in
+        --dry-run) DRY=1 ;;
+        -*) echo "opzione sconosciuta: $a" >&2; exit 2 ;;
+        *) [ -z "$OLD_ID" ] || { echo "un solo identificatore ammesso" >&2; exit 2; }
+           OLD_ID="$a" ;;
+    esac
+done
 NEW_ID=space.pyla.app
 NEW_HELPER_DIR=/usr/local/libexec/pyla
 POLKIT_DIR=/usr/share/polkit-1/actions
 OLD_HELPER_DIR=/usr/local/libexec/${OLD_ID##*.}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 BIN="$HERE/target/release/pyla-helper"
-DRY=0
-[ "${2:-}" = "--dry-run" ] && DRY=1
 if [ -z "$OLD_ID" ]; then
     echo "uso: sudo $0 <vecchio-identificatore-polkit> [--dry-run]" >&2
     echo "     es. sudo $0 <id-trovato-con: ls /usr/share/polkit-1/actions | grep -i argo> --dry-run" >&2
     exit 1
+fi
+
+case "$OLD_ID" in
+    *[!A-Za-z0-9._-]*|*..*|.*) echo "identificatore non valido: $OLD_ID" >&2; exit 2 ;;
+esac
+POLKIT_DIR_CHECK=/usr/share/polkit-1/actions
+if [ ! -f "$POLKIT_DIR_CHECK/$OLD_ID.policy" ]; then
+    echo "non trovo $POLKIT_DIR_CHECK/$OLD_ID.policy: identificatore sbagliato?" >&2
+    exit 2
+fi
+if [ "$OLD_HELPER_DIR" = /usr/local/libexec/ ] || [ "$OLD_HELPER_DIR" = /usr/local/libexec/pyla ]; then
+    echo "cartella helper legacy non valida: $OLD_HELPER_DIR" >&2; exit 2
 fi
 
 if [ "$(id -u)" -ne 0 ]; then echo "serve sudo" >&2; exit 1; fi
@@ -49,8 +69,8 @@ run rm -rf "$OLD_HELPER_DIR"
 echo "== 2. stato delle mitigazioni (marcatore # argo: -> # pyla:)"
 for pair in "etc/sysctl.d/90-argo-mitigations.conf etc/sysctl.d/90-pyla-mitigations.conf" \
             "etc/modprobe.d/argo-mitigations.conf etc/modprobe.d/pyla-mitigations.conf"; do
-    old=/$($0 --noop 2>/dev/null || true; printf '%s' "$pair" | cut -d' ' -f1)
-    new=/$($0 --noop 2>/dev/null || true; printf '%s' "$pair" | cut -d' ' -f2)
+    old=/${pair%% *}
+    new=/${pair#* }
     [ -f "$old" ] || continue
     if [ "$DRY" = 1 ]; then
         echo "  [dry] $old -> $new (righe '# argo:' riscritte)"
@@ -62,7 +82,9 @@ for pair in "etc/sysctl.d/90-argo-mitigations.conf etc/sysctl.d/90-pyla-mitigati
 done
 
 echo "== 3. dir dei backup delle regole"
-if [ -d /var/lib/argo ]; then
+if [ -d /var/lib/argo ] && [ -e /var/lib/pyla ]; then
+    echo "  esiste gia' /var/lib/pyla: lascio /var/lib/argo al suo posto (confronta a mano)"
+elif [ -d /var/lib/argo ]; then
     run mv /var/lib/argo /var/lib/pyla
     run install -d -o root -g root -m 0700 /var/lib/pyla /var/lib/pyla/backups
 fi
@@ -89,13 +111,8 @@ if [ -n "$USER" ] && [ -n "$HOME_DIR" ]; then
             fi
         else
             run mv "$old" "$new"
-            echo "  spostato $new"
+            [ "$DRY" = 1 ] || echo "  spostato $new"
         fi
-        for db in argo.db argo.db-wal argo.db-shm; do
-            [ -f "$new/$db" ] || continue
-            target=$(printf '%s' "$new/${db#argo.}" | sed "s|/$db\$||")
-            :
-        done
         if [ "$DRY" = 0 ]; then
             for ext in db db-wal db-shm; do
                 [ -f "$new/argo.$ext" ] && mv "$new/argo.$ext" "$new/pyla.$ext" && echo "  $new/argo.$ext -> pyla.$ext"
