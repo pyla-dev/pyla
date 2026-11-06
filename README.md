@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="ui/icon.svg" alt="Pyla" width="96" height="96">
+<img src="ui/icon.svg" alt="PYLA" width="96" height="96">
 
-# Pyla
+# PYLA
 
 **A desktop control centre for the Linux firewall — rule sets, live kernel ruleset, and CVE-aware hardening.**
 
@@ -27,12 +27,12 @@ Project site: <https://pyla.space> · Code, issues and releases: <https://github
 
 ## Overview
 
-Pyla turns [UFW](https://launchpad.net/ufw) into a set-based firewall manager with a native desktop UI.
+PYLA turns [UFW](https://launchpad.net/ufw) into a set-based firewall manager with a native desktop UI.
 Instead of editing rules one command at a time, you keep **named rule sets** — *Home*, *Travel*, *Office* —
 in a local database, toggle individual rules on and off, preview the exact `ufw` commands, and apply a whole
 set atomically with automatic rollback.
 
-Beyond rule management, Pyla gives you a **read-only view of the complete nftables ruleset** (UFW, Docker,
+Beyond rule management, PYLA gives you a **read-only view of the complete nftables ruleset** (UFW, Docker,
 libvirt and kernel tables, with live counters) and a **CVE panel** that tracks open Ubuntu kernel
 vulnerabilities for the exact kernel you are running — and, where a subsystem can be safely switched off,
 offers a one-click, fully reversible **temporary mitigation** until the patched kernel lands.
@@ -54,7 +54,7 @@ offers a one-click, fully reversible **temporary mitigation** until the patched 
 ```mermaid
 flowchart LR
     subgraph User session
-        UI["Pyla UI<br/>Tauri 2 · HTML/CSS/JS"]
+        UI["PYLA UI<br/>Tauri 2 · HTML/CSS/JS"]
         DB[("SQLite<br/>rule sets · history · settings")]
         API{{"Ubuntu Security API<br/>ubuntu.com/security"}}
     end
@@ -84,7 +84,7 @@ The workspace is split into three crates:
 
 ## Security model
 
-Pyla manages a security boundary, so it is designed to be boring and auditable.
+PYLA manages a security boundary, so it is designed to be boring and auditable.
 
 - **Privilege separation.** The GUI runs as the logged-in user. Root operations go through `pyla-helper`,
   installed at a fixed path and authorised by a dedicated polkit action (`auth_admin_keep`).
@@ -98,7 +98,7 @@ Pyla manages a security boundary, so it is designed to be boring and auditable.
 - **Read-only by default.** The kernel ruleset view and all CVE checks never modify the system.
 
 > [!NOTE]
-> Pyla deliberately leaves `before.rules`, `after.rules`, Docker and libvirt chains untouched, and refuses
+> PYLA deliberately leaves `before.rules`, `after.rules`, Docker and libvirt chains untouched, and refuses
 > to apply while route or application-profile rules exist in UFW, rather than silently discarding them.
 
 ## CVE intelligence and temporary mitigations
@@ -127,7 +127,7 @@ code changes.
 | Bluetooth | module blocked | Bluetooth stops working (full effect after reboot). |
 | KVM | check only | Reports whether KVM guests are running; nothing to switch off safely. |
 
-All mitigations live in exactly two files owned by Pyla —
+All mitigations live in exactly two files owned by PYLA —
 `/etc/sysctl.d/90-pyla-mitigations.conf` and `/etc/modprobe.d/pyla-mitigations.conf` — persist across
 reboots, and are removed with **Undo mitigation**. Each one shows the evidence it is based on (live sysctl
 value, module loaded or blocked, listening IPv4 TCP sockets for network-facing issues) before you act.
@@ -157,7 +157,7 @@ cargo build --release                       # app + helper
 sudo packaging/install-helper.sh            # privileged helper + polkit policy
 pkexec /usr/local/libexec/pyla/pyla-helper status   # smoke test
 
-packaging/install-desktop.sh                # adds Pyla to the application menu (per user)
+packaging/install-desktop.sh                # adds PYLA to the application menu (per user)
 ```
 
 Re-run `sudo packaging/install-helper.sh` whenever the helper changes; the app detects an outdated helper
@@ -184,7 +184,7 @@ cargo test -p pyla      -- --ignored --nocapture   # live Ubuntu Security API qu
 
 ## Project status
 
-Pyla is an **early preview**. The user interface is currently in Italian; an English localisation is
+PYLA is an **early preview**. The user interface is currently in Italian; an English localisation is
 planned. Roadmap:
 
 - [ ] English UI and i18n
@@ -195,7 +195,7 @@ planned. Roadmap:
 
 ## Credits
 
-Pyla is maintained by the **pyla-dev** organisation. The design and implementation were produced
+PYLA is maintained by the **pyla-dev** organisation. The design and implementation were produced
 with **Claude** (Anthropic) working in Claude Code, under human direction, review and real-world
 validation on production machines.
 
