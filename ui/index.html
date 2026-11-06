@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PYLA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="icon.svg" alt="" width="26" height="26"> PYLA</div>
+    <div id="fw-status" class="fw-status">…</div>
+    <div class="spacer"></div>
+    <button id="btn-lang" class="ghost lang-btn" title="Lingua / Language">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21M12 3c-2.5 2.6-3.8 5.7-3.8 9s1.3 6.4 3.8 9"></path>
+      </svg>
+      <span id="btn-lang-label">IT</span>
+    </button>
+    <button id="btn-live" class="ghost" title="Legge le regole presenti ora in UFW (chiede l'autenticazione)">Stato UFW</button>
+    <button id="btn-nft" class="ghost" title="Tutte le tabelle e catene del kernel (UFW, Docker, libvirt…), in sola lettura">Ruleset completo</button>
+    <button id="btn-cve" class="ghost" title="Vulnerabilità del kernel Ubuntu in uso (Ubuntu Security API)">CVE</button>
+    <button id="btn-history" class="ghost">Storico</button>
+    <button id="btn-toggle-fw">…</button>
+  </header>
+
+  <div id="helper-warning" class="banner warn" hidden></div>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>Set di regole</h2>
+      </div>
+      <ul id="rulesets" class="ruleset-list"></ul>
+      <div class="sidebar-actions">
+        <button id="btn-new-set">Nuovo set</button>
+        <button id="btn-import" class="ghost" title="Crea un set con le regole presenti ora in UFW">Importa da UFW</button>
+      </div>
+    </aside>
+
+    <section id="detail" class="detail">
+      <div class="empty">Seleziona un set o creane uno nuovo.<br>
+        Per partire dalle regole attuali usa <b>Importa da UFW</b>.</div>
+    </section>
+  </main>
+
+  <!-- editor regola -->
+  <dialog id="dlg-rule">
+    <form id="rule-form" method="dialog">
+      <h3 id="rule-title">Regola</h3>
+      <div class="grid">
+        <label>Azione
+          <select name="action">
+            <option value="allow">allow — consenti</option>
+            <option value="deny">deny — scarta</option>
+            <option value="reject">reject — rifiuta</option>
+            <option value="limit">limit — consenti con limite</option>
+          </select>
+        </label>
+        <label>Direzione
+          <select name="direction">
+            <option value="in">in — entrata</option>
+            <option value="out">out — uscita</option>
+          </select>
+        </label>
+        <label>Interfaccia <input name="interface" placeholder="tutte" autocomplete="off"></label>
+        <label>Protocollo
+          <select name="proto">
+            <option value="any">tutti</option>
+            <option value="tcp">tcp</option>
+            <option value="udp">udp</option>
+          </select>
+        </label>
+        <label>Sorgente <input name="src" placeholder="any, 192.0.2.6, 10.0.0.0/8" autocomplete="off"></label>
+        <label>Porta sorgente <input name="sport" placeholder="tutte" autocomplete="off"></label>
+        <label>Destinazione <input name="dst" placeholder="any" autocomplete="off"></label>
+        <label>Porta destinazione <input name="dport" placeholder="22, 80,443, 6000:6007" autocomplete="off"></label>
+        <label>Log
+          <select name="log">
+            <option value="off">nessuno</option>
+            <option value="log">nuove connessioni</option>
+            <option value="log-all">tutti i pacchetti</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" name="enabled" checked> Abilitata</label>
+        <label class="wide">Commento <input name="comment" maxlength="120" autocomplete="off"></label>
+      </div>
+      <p id="rule-error" class="error" hidden></p>
+      <div class="actions">
+        <button type="button" class="ghost" data-close>Annulla</button>
+        <button type="submit" class="primary">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- nome/descrizione set -->
+  <dialog id="dlg-set">
+    <form id="set-form" method="dialog">
+      <h3 id="set-title">Set di regole</h3>
+      <label>Nome <input name="name" required autocomplete="off"></label>
+      <label>Descrizione <input name="description" autocomplete="off"></label>
+      <p id="set-error" class="error" hidden></p>
+      <div class="actions">
+        <button type="button" class="ghost" data-close>Annulla</button>
+        <button type="submit" class="primary">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- dialog generico (anteprima, stato, storico, conferme) -->
+  <dialog id="dlg-info" class="wide-dialog">
+    <div id="info-body"></div>
+    <div class="actions" id="info-actions"></div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

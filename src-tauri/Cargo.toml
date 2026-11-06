@@ -1,0 +1,19 @@
+[package]
+name = "pyla"
+description = "PYLA — gestione grafica del firewall UFW con set di regole"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+pyla-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2", features = [] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+ureq = { version = "3", features = ["json"] }
+tauri-plugin-opener = "2"
