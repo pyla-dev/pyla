@@ -1,0 +1,12 @@
+[package]
+name = "pyla-helper"
+description = "Helper privilegiato di Pyla: legge e applica le regole UFW (avviato via pkexec)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+pyla-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
