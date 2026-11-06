@@ -145,15 +145,23 @@ Releases: <https://github.com/pyla-dev/pyla/releases/latest> — a self-containe
 privileged helper, the polkit policy, the desktop entry and the icons.
 
 ```sh
-curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.0_amd64.deb
-curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.0_amd64.deb.sha256
-sha256sum -c pyla_0.2.0_amd64.deb.sha256          # must print "OK" before installing
-sudo apt install ./pyla_0.2.0_amd64.deb
+curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.1_amd64.deb
+curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.1_amd64.deb.sha256
+sha256sum -c pyla_0.2.1_amd64.deb.sha256          # must print "OK" before installing
+sudo apt install ./pyla_0.2.1_amd64.deb
 ```
 
-> Upgrading from the old *Argo* build? Run `sudo packaging/migrate-argo-to-pyla.sh it.daviderighi.argo`
-> before the first launch: it moves the helper, the polkit policy, the mitigation state and your rule sets
-> (add `--dry-run` first to see what would change).
+> **Upgrading from the old *Argo* build?** Close the app, then from a clone of this repository run the
+> migration script before the first launch. It moves the helper, the polkit policy, the mitigation state
+> and your rule sets. The first argument is the legacy polkit identifier installed on your machine:
+>
+> ```sh
+> ls /usr/share/polkit-1/actions | grep -i argo                 # e.g. <old-id>.policy
+> cargo build --release -p pyla-helper
+> sudo packaging/migrate-argo-to-pyla.sh <old-id> --dry-run    # shows what would change
+> sudo packaging/migrate-argo-to-pyla.sh <old-id>              # applies it
+> packaging/install-desktop.sh                                 # new launcher (source builds only)
+> ```
 
 ### Requirements
 
@@ -180,8 +188,9 @@ packaging/install-desktop.sh                # adds PYLA to the application menu 
 Re-run `sudo packaging/install-helper.sh` whenever the helper changes; the app detects an outdated helper
 and tells you so. To remove it: `sudo packaging/install-helper.sh --uninstall`.
 
-For development use `cargo tauri dev`; `cargo tauri build` produces a `.deb` in
-`target/release/bundle/deb/`.
+For development use `cargo tauri dev`. To build the same `.deb` that is published in the releases
+(app, helper, polkit policy, desktop entry, icons, license, sha256/sha512) run `packaging/make-deb.sh`;
+the output goes to `target/dist/`.
 
 ### Optional tests that touch the real system
 
@@ -201,11 +210,12 @@ cargo test -p pyla      -- --ignored --nocapture   # live Ubuntu Security API qu
 
 ## Project status
 
-PYLA is an **early preview**. The user interface is currently in Italian; an English localisation is
-planned. Roadmap:
+PYLA is an **early preview**. The user interface is in Italian and English (switch with the **IT/EN**
+button in the header). Roadmap:
 
-- [ ] English UI and i18n
-- [ ] `.deb` packaging with the helper and polkit policy
+- [x] English UI and i18n
+- [x] `.deb` packaging with the helper and polkit policy
+- [ ] Local web console (in progress)
 - [ ] Native nftables backend (own table, UFW optional)
 - [ ] `[UFW BLOCK]` journal viewer and per-rule hit counters
 - [ ] Timed auto-rollback after apply
