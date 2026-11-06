@@ -11,6 +11,7 @@ Project site: <https://pyla.space> · Code, issues and releases: <https://github
 [![Rust](https://img.shields.io/badge/Rust-2021-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-2-24c8db?logo=tauri&logoColor=white)](https://tauri.app/)
 [![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20UFW-e95420?logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+[![Release](https://img.shields.io/github/v/release/pyla-dev/pyla?label=release&color=orange)](https://github.com/pyla-dev/pyla/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2f6fab)](LICENSE)
 [![Status](https://img.shields.io/badge/status-early%20preview-f0c060)](#project-status)
 
@@ -137,6 +138,22 @@ value, module loaded or blocked, listening IPv4 TCP sockets for network-facing i
 > patched kernel from your distribution, followed by a reboot.
 
 ## Installation
+
+### Prebuilt package (recommended)
+
+Releases: <https://github.com/pyla-dev/pyla/releases/latest> — a self-contained `.deb` with the app, the
+privileged helper, the polkit policy, the desktop entry and the icons.
+
+```sh
+curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.0_amd64.deb
+curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.0_amd64.deb.sha256
+sha256sum -c pyla_0.2.0_amd64.deb.sha256          # must print "OK" before installing
+sudo apt install ./pyla_0.2.0_amd64.deb
+```
+
+> Upgrading from the old *Argo* build? Run `sudo packaging/migrate-argo-to-pyla.sh it.daviderighi.argo`
+> before the first launch: it moves the helper, the polkit policy, the mitigation state and your rule sets
+> (add `--dry-run` first to see what would change).
 
 ### Requirements
 
