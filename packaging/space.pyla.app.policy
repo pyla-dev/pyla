@@ -3,10 +3,10 @@
  "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
-  <vendor>Pyla</vendor>
+  <vendor>PYLA</vendor>
   <action id="space.pyla.app.helper">
-    <description>Manage the UFW firewall with Pyla</description>
-    <description xml:lang="it">Gestire il firewall UFW con Pyla</description>
+    <description>Manage the UFW firewall with PYLA</description>
+    <description xml:lang="it">Gestire il firewall UFW con PYLA</description>
     <message>Authentication is required to read or change the firewall rules</message>
     <message xml:lang="it">Serve l'autenticazione per leggere o modificare le regole del firewall</message>
     <icon_name>security-high</icon_name>

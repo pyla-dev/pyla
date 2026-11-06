@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pubblica l'albero di lavoro di Pyla sul repository pubblico pyla-dev/pyla.
+# Pubblica l'albero di lavoro di PYLA sul repository pubblico pyla-dev/pyla.
 # La storia locale NON viene mai spinta: il repository pubblico riceve un commit
 # nuovo figlio del suo ultimo commit, con il contenuto dell'albero corrente.
 #   packaging/publish-public.sh            (pubblica)
@@ -44,7 +44,7 @@ if [ "$DRY" = 1 ]; then
     exit 0
 fi
 
-git -C "$WORK" commit -q --author="PYLA Project <maintainers@pyla.space>" -m "Snapshot da $SRC: Pyla (crate pyla-core/pyla-helper, helper polkit space.pyla.app, exposure per famiglia)"
+git -C "$WORK" commit -q --author="PYLA Project <maintainers@pyla.space>" -m "Snapshot da $SRC: PYLA (crate pyla-core/pyla-helper, helper polkit space.pyla.app, exposure per famiglia)"
 git -C "$WORK" push "$REMOTE" "HEAD:$BRANCH"
 git -C "$ROOT" worktree remove --force "$WORK"
 echo "pubblicato: $REMOTE#$BRANCH (contenuto di $SRC)"

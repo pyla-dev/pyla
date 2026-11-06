@@ -1,5 +1,5 @@
 #!/bin/sh
-# Mette Pyla tra le applicazioni di GNOME per l'utente corrente (non serve sudo).
+# Mette PYLA tra le applicazioni di GNOME per l'utente corrente (non serve sudo).
 # Usa il binario release del repo: compilalo prima con `cargo tauri build --no-bundle`.
 #   packaging/install-desktop.sh
 #   packaging/install-desktop.sh --uninstall
@@ -26,7 +26,7 @@ install -d "$APPS"
 cat > "$APPS/$ID.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Pyla
+Name=PYLA
 GenericName=Firewall
 Comment=Gestione grafica del firewall UFW con set di regole
 Exec=$BIN

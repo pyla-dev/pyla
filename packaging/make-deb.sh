@@ -1,5 +1,5 @@
 #!/bin/sh
-# Costruisce il pacchetto .deb di Pyla: app + helper privilegiato + policy polkit
+# Costruisce il pacchetto .deb di PYLA: app + helper privilegiato + policy polkit
 # + desktop file e icone, poi genera gli hash sha256/sha512 del pacchetto.
 # Uso (dalla radice del repo): packaging/make-deb.sh
 # Richiede: cargo, dpkg-deb. Output in target/dist/.
@@ -39,7 +39,7 @@ mkdir -p "$STAGE/usr/share/applications"
 cat > "$STAGE/usr/share/applications/$ID.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Pyla
+Name=PYLA
 GenericName=Firewall
 Comment=Graphical manager for the UFW firewall
 Exec=/usr/bin/pyla

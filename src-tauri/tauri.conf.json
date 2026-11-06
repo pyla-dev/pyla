@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Pyla",
+  "productName": "PYLA",
   "version": "0.1.0",
   "identifier": "space.pyla.app",
   "build": {
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Pyla — firewall",
+        "title": "PYLA — firewall",
         "width": 1180,
         "height": 760,
         "minWidth": 860,

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installa l'helper privilegiato di Pyla e la sua policy polkit.
+# Installa l'helper privilegiato di PYLA e la sua policy polkit.
 # Uso (dalla radice del repo, dopo `cargo build --release -p pyla-helper`):
 #   sudo packaging/install-helper.sh
 #   sudo packaging/install-helper.sh --uninstall

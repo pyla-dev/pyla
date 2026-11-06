@@ -1,7 +1,7 @@
 #!/bin/sh
-# Migra l'installazione di Argo a Pyla: helper, policy polkit, stato delle
+# Migra l'installazione di Argo a PYLA: helper, policy polkit, stato delle
 # mitigazioni, backup e dati utente. Da eseguire DOPO `cargo build --release -p
-# pyla-helper` e prima di avviare la prima copia di Pyla.
+# pyla-helper` e prima di avviare la prima copia di PYLA.
 #   sudo packaging/migrate-argo-to-pyla.sh            (applica)
 #   sudo packaging/migrate-argo-to-pyla.sh --dry-run  (mostra soltanto)
 set -eu
@@ -55,7 +55,7 @@ for pair in "etc/sysctl.d/90-argo-mitigations.conf etc/sysctl.d/90-pyla-mitigati
     if [ "$DRY" = 1 ]; then
         echo "  [dry] $old -> $new (righe '# argo:' riscritte)"
     else
-        sed 's/^# argo:/# pyla:/; s/^# Gestito da Argo/# Gestito da Pyla/' "$old" > "$new"
+        sed 's/^# argo:/# pyla:/; s/^# Gestito da Argo/# Gestito da PYLA/' "$old" > "$new"
         rm -f "$old"
         echo "  migrato $new"
     fi
