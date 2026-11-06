@@ -4,7 +4,7 @@
 
 # PYLA — Protect Your Local Access
 
-🌐 [pyla.space](https://pyla.space) · πύelai ("the gates")
+🌐 [pyla.space](https://pyla.space) · πύλαι ("the gates")
 
 An open source firewall GUI for Ubuntu that makes **kernel-level network posture visible**: what's listening, what's exposed, what should never have been — in one screen, in plain language.
 
