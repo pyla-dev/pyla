@@ -25,6 +25,21 @@ BIN="$BUILD_ROOT/target/release/pyla"
 HELPER="$BUILD_ROOT/target/release/pyla-helper"
 [ -x "$BIN" ] && [ -x "$HELPER" ] || { echo "binari mancanti in target/release" >&2; exit 1; }
 
+# Verifica di sanitizzazione dei binari: il pacchetto e' un artefatto pubblico e
+# i path di build restano impressi nelle stringhe (panic, file!/, backtrace).
+# --remap-path-prefix copre codice, registry e stdlib solo se la build parte da
+# BUILD_ROOT con RUSTFLAGS: un binario buildato a mano da ~/Repos/... NO. Se un
+# domani il binario verra' distribuito nudo (modalita' web), questo e' il gate.
+for f in "$BIN" "$HELPER"; do
+    LEAK=$(strings "$f" | grep -m3 -E "/home/[a-z]|/Users/|[A-Za-z0-9_.-]*RustroverProjects" || true) # sanitize-ignore
+    if [ -n "$LEAK" ]; then
+        echo "ERRORE: $f contiene path di build locali:" >&2
+        echo "$LEAK" | sed 's/^/  /' >&2
+        echo "ricompila con packaging/make-deb.sh (usa --remap-path-prefix)." >&2
+        exit 1
+    fi
+done
+
 PKG="pyla_${VERSION}_${ARCH}"
 STAGE="$OUT/$PKG"
 rm -rf "$STAGE"

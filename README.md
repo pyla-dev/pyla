@@ -46,6 +46,7 @@ offers a one-click, fully reversible **temporary mitigation** until the patched 
 | 🔍 | **Preview & apply** | Diff between live and desired state, the exact `ufw` commands, then an atomic apply with backup and automatic rollback on any mismatch. |
 | 🧾 | **Apply history** | Every apply is logged with its outcome, command log and before/after snapshot. |
 | 🧱 | **Full kernel ruleset** | Read-only `nft list ruleset` browser: tables and chains grouped by owner (UFW, Docker, libvirt, kernel), packet/byte counters, filter, clickable `jump`/`goto` targets. |
+| 📡 | **Exposure check** | Every TCP listener on the machine (`/proc/net/tcp{,6}`) evaluated against the **live** nftables ruleset, with IPv4 and IPv6 judged separately: a dual-stack socket on `::` can be reachable on one family and dropped on the other. Verdicts are `blocked`, `exposed`, `conditionally exposed` (interface-scoped rules) or `local`. |
 | 🛡️ | **CVE intelligence** | Live data from the Ubuntu Security API: watched CVEs plus open *high*/*critical* kernel CVEs for your release, with a verdict computed against the installed kernel package. |
 | 🩹 | **Temporary mitigations** | Subsystem-level, reversible hardening (sysctl or module blocking) for kernel CVEs that are still unpatched, with an exposure check before and after. |
 | 🔐 | **Least privilege** | The UI never runs as root. A small, audited helper is invoked through polkit and accepts only validated, allow-listed operations. |
@@ -215,10 +216,19 @@ button in the header). Roadmap:
 
 - [x] English UI and i18n
 - [x] `.deb` packaging with the helper and polkit policy
-- [ ] Local web console (in progress)
+- [ ] **Web mode** — the same UI served over HTTP by the same binary (`pyla web`), so a
+      headless Ubuntu box can be managed from a browser through an SSH tunnel. The design is
+      accepted ([ADR-0001](docs/adr/0001-modalita-web.md)); the implementation has **not
+      started** beyond that design and the shared-state/event-bus groundwork, and it is **not in
+      any release**. Today `pyla` is a desktop binary: 25 Tauri commands, no HTTP routes, no CLI
+      subcommands.
 - [ ] Native nftables backend (own table, UFW optional)
 - [ ] `[UFW BLOCK]` journal viewer and per-rule hit counters
 - [ ] Timed auto-rollback after apply
+
+Decisions worth reading: [ADR-0001 — web/headless mode](docs/adr/0001-modalita-web.md)
+(why one binary and two transports, why `pkexec` cannot be the privileged channel on a headless
+host, and what the accepted trade-offs are).
 
 ## Credits
 
