@@ -43,14 +43,17 @@ offers a one-click, fully reversible **temporary mitigation** until the patched 
 | | Capability | Details |
 |---|---|---|
 | 🗂️ | **Rule sets** | Unlimited named sets stored in SQLite; per-rule enable/disable, reordering, duplication, import from the live UFW state. |
+| 📥 | **Import from file** | Create a set from a JSONC file (JSON with comments). Errors point to the real line of the file, `"enabled": false` imports a rule as disabled, duplicates are skipped as UFW does. An example profile ships in the package (`/usr/share/doc/pyla/examples/stealth.jsonc`). |
+| 🌐 | **Public profiles** | Ready-made rule sets from [pyla-dev/pyla-profiles](https://github.com/pyla-dev/pyla-profiles), listed with name, target and risk level. The profile text is shown before you import it, and nothing is applied until you choose to. |
 | 🔍 | **Preview & apply** | Diff between live and desired state, the exact `ufw` commands, then an atomic apply with backup and automatic rollback on any mismatch. |
 | 🧾 | **Apply history** | Every apply is logged with its outcome, command log and before/after snapshot. |
 | 🧱 | **Full kernel ruleset** | Read-only `nft list ruleset` browser: tables and chains grouped by owner (UFW, Docker, libvirt, kernel), packet/byte counters, filter, clickable `jump`/`goto` targets. |
 | 📡 | **Exposure check** | Every TCP listener on the machine (`/proc/net/tcp{,6}`) evaluated against the **live** nftables ruleset, with IPv4 and IPv6 judged separately: a dual-stack socket on `::` can be reachable on one family and dropped on the other. Verdicts are `blocked`, `exposed`, `conditionally exposed` (interface-scoped rules) or `local`. |
 | 📋 | **Listening report** | Like Gufw's *Report* tab: every listening TCP socket and unconnected UDP socket (`/proc/net/{tcp,udp}{,6}`) with address scope, owning process and user. Read without a password for your own processes; *Show all processes* reads the rest as root through the helper. One click opens a pre-filled `allow` rule for that port in the selected set. |
-| 🛡️ | **CVE intelligence** | Live data from the Ubuntu Security API: watched CVEs plus open *high*/*critical* kernel CVEs for your release, with a verdict computed against the installed kernel package. |
+| 🛡️ | **CVE intelligence** | Live data from the Ubuntu Security API: watched CVEs plus open *high*/*critical* kernel CVEs for your release, with a verdict computed against the installed kernel package. *Hide fixed* (on by default) keeps the list to the CVEs that still need an action. |
 | 🩹 | **Temporary mitigations** | Subsystem-level, reversible hardening (sysctl or module blocking) for kernel CVEs that are still unpatched, with an exposure check before and after. |
 | 🔐 | **Least privilege** | The UI never runs as root. A small, audited helper is invoked through polkit and accepts only validated, allow-listed operations. |
+| 📱 | **Works on small screens** | Sidebar layout with full-page panels instead of dialogs; below ~800 px the sidebar becomes a drawer and the rule table becomes cards. Italian and English UI. |
 
 ## Architecture
 
@@ -60,6 +63,7 @@ flowchart LR
         UI["PYLA UI<br/>Tauri 2 · HTML/CSS/JS"]
         DB[("SQLite<br/>rule sets · history · settings")]
         API{{"Ubuntu Security API<br/>ubuntu.com/security"}}
+        PROF{{"Public profiles<br/>github.com/pyla-dev/pyla-profiles"}}
     end
     subgraph Root
         H["pyla-helper<br/>JSON in / JSON out"]
@@ -69,6 +73,7 @@ flowchart LR
     end
     UI <--> DB
     UI -- HTTPS, read-only --> API
+    UI -- HTTPS, read-only --> PROF
     UI -- "pkexec (polkit)" --> H
     H --> UFW
     H --> NFT
@@ -79,11 +84,13 @@ The workspace is split into three crates:
 
 | Crate | Role |
 |---|---|
-| [`crates/pyla-core`](crates/pyla-core) | Pure logic, no side effects: rule model and validation, parser of UFW `### tuple ###` lines, apply planner, nftables text parser, listening-socket reader, CVE-to-subsystem classifier and mitigation registry. Shared by the app and the helper. |
+| [`crates/pyla-core`](crates/pyla-core) | Pure logic, no side effects: rule model and validation, parser of UFW `### tuple ###` lines, JSONC import parser, apply planner, nftables text parser, listening-socket reader, CVE-to-subsystem classifier and mitigation registry. Shared by the app and the helper. |
 | [`crates/pyla-helper`](crates/pyla-helper) | The only privileged component. Commands: `status`, `apply`, `enable`, `disable`, `ruleset`, `mitigate`, `listening` (read-only). Runs binaries by absolute path with a cleared environment and never through a shell. |
-| [`src-tauri`](src-tauri) | The desktop application: Tauri commands, SQLite persistence, Ubuntu Security API client. |
+| [`src-tauri`](src-tauri) | The desktop application: Tauri commands, SQLite persistence, Ubuntu Security API client, public-profiles client. |
 | [`ui`](ui) | Framework-free front end (no bundler, strict CSP). |
-| [`packaging`](packaging) | polkit policy, helper installer, desktop entry installer. |
+| [`packaging`](packaging) | polkit policy, helper installer, desktop entry installer, `.deb` builder. |
+| [`examples`](examples) | Importable example profile (`stealth.jsonc`). |
+| [`tests`](tests) | UI smoke tests (jsdom, Italian and English) with a mock of the Tauri backend. |
 
 ## Security model
 
@@ -98,6 +105,10 @@ PYLA manages a security boundary, so it is designed to be boring and auditable.
   (last 30 kept under `/var/lib/pyla/backups`). If a command fails or the resulting state differs from the
   requested set, the snapshot is restored and UFW reloaded.
 - **Bounded input.** Requests are size-limited and rule counts capped.
+- **Profiles from one fixed source.** Public profiles are downloaded only from `pyla-dev/pyla-profiles`:
+  the UI passes just a profile name (lowercase letters, digits and dashes), the backend builds the address,
+  enforces size limits and a timeout, and the text goes through the same parser as a local file. Importing
+  creates a set; nothing reaches the firewall until you apply it.
 - **Read-only by default.** The kernel ruleset view and all CVE checks never modify the system.
 
 > [!NOTE]
@@ -148,16 +159,19 @@ privileged helper, the polkit policy, the desktop entry and the icons.
 
 ```sh
 # the asset name carries the release version: check the release page for the newest one
-curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.1_amd64.deb
-curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.1_amd64.deb.sha256
-sha256sum -c pyla_0.2.1_amd64.deb.sha256          # must print "OK" before installing
-sudo apt install ./pyla_0.2.1_amd64.deb
+curl -LO https://github.com/pyla-dev/pyla/releases/download/v0.2.13/pyla_0.2.13_amd64.deb
+curl -LO https://github.com/pyla-dev/pyla/releases/download/v0.2.13/pyla_0.2.13_amd64.deb.sha256
+sha256sum -c pyla_0.2.13_amd64.deb.sha256         # must print "OK" before installing
+sudo apt install ./pyla_0.2.13_amd64.deb
 ```
 
-> The newest **published** release is v0.2.1. Newer versions exist in this repository's changelog and may only
-> be available as a local build: `packaging/make-deb.sh` writes `target/dist/pyla_<version>_amd64.deb`, where
-> `<version>` comes from `src-tauri/tauri.conf.json` (kept in sync with `[workspace.package] version` in the
-> root `Cargo.toml`).
+Upgrading installs the new privileged helper too: features that need it (such as *Show all processes* in
+the Report page) tell you if the installed helper is older than the app. What changed in each version is in
+the [release notes](https://github.com/pyla-dev/pyla/releases).
+
+To build the package yourself, `packaging/make-deb.sh` writes `target/dist/pyla_<version>_amd64.deb`, where
+`<version>` comes from `src-tauri/tauri.conf.json` (kept in sync with `[workspace.package] version` in the
+root `Cargo.toml`).
 
 > **Upgrading from the old *Argo* build?** Close the app, then from a clone of this repository run the
 > migration script before the first launch. It moves the helper, the polkit policy, the mitigation state
@@ -209,11 +223,13 @@ cargo test -p pyla      -- --ignored --nocapture   # live Ubuntu Security API qu
 
 ## Usage
 
-1. **Import from UFW** to create a set from the rules currently loaded.
+1. **Import from UFW** to create a set from the rules currently loaded, or **Import from file** to start
+   from a JSONC file or one of the public profiles.
 2. **Duplicate** it to build variants; enable, disable, add or reorder rules.
 3. **Preview & apply** shows the difference and the exact commands before anything changes.
-4. **Full ruleset** shows what the kernel actually enforces, including Docker and libvirt.
-5. **CVE** lists the vulnerabilities affecting your kernel; **Mitigate** applies a reversible safeguard
+4. **Report** lists the services listening on the machine; **+ Rule** adds an `allow` rule for a port.
+5. **Full ruleset** shows what the kernel actually enforces, including Docker and libvirt.
+6. **CVE** lists the vulnerabilities affecting your kernel; **Mitigate** applies a reversible safeguard
    where one exists.
 
 ## Project status
@@ -223,11 +239,14 @@ button in the header). Roadmap:
 
 - [x] English UI and i18n
 - [x] `.deb` packaging with the helper and polkit policy
+- [x] Rule sets from JSONC files and from public profiles
+- [x] Listening services report with one-click rules
+- [x] Layout usable on small screens
 - [ ] **Web mode** — the same UI served over HTTP by the same binary (`pyla web`), so a
       headless Ubuntu box can be managed from a browser through an SSH tunnel. The design is
       accepted ([ADR-0001](docs/adr/0001-modalita-web.md)); the implementation has **not
       started** beyond that design and the shared-state/event-bus groundwork, and it is **not in
-      any release**. Today `pyla` is a desktop binary: 25 Tauri commands, no HTTP routes, no CLI
+      any release**. Today `pyla` is a desktop binary: 29 Tauri commands, no HTTP routes, no CLI
       subcommands.
 - [ ] Native nftables backend (own table, UFW optional)
 - [ ] `[UFW BLOCK]` journal viewer and per-rule hit counters
