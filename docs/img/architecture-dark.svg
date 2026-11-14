@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600" role="img" aria-labelledby="t d">
+<title id="t">PYLA architecture</title>
+<desc id="d">The PYLA desktop app runs as the user with a local SQLite database, reads the Ubuntu Security API and the public profiles over HTTPS, and performs privileged actions only through pyla-helper, started via pkexec and authorised by polkit.</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9198a1"/></marker></defs>
+<rect width="1000" height="600" fill="#0d1117"/>
+<rect x="24" y="24" width="452" height="552" rx="14" fill="#151b23" stroke="#3d444d" stroke-width="1.4"/>
+<text x="42" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#9198a1" text-anchor="start">USER SESSION</text>
+<text x="42" y="70" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">runs as the logged-in user, no privileges</text>
+<rect x="524" y="24" width="452" height="170" rx="14" fill="#0f1a2a" stroke="#4493f8" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="542" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#79b8ff" text-anchor="start">INTERNET</text>
+<text x="542" y="70" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">HTTPS, read-only</text>
+<rect x="524" y="226" width="452" height="350" rx="14" fill="#1f1214" stroke="#f85149" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="542" y="254" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#ff7b72" text-anchor="start">ROOT</text>
+<text x="542" y="272" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198a1" text-anchor="start">only through polkit (auth_admin_keep)</text>
+<rect x="52" y="96" width="396" height="190" rx="10" fill="#241a0c" stroke="#ffb95c" stroke-width="1.2"/>
+<text x="68" y="124" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#ffb95c" text-anchor="start">PYLA desktop app</text>
+<text x="68" y="146" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">Tauri 2 shell, Rust backend</text>
+<text x="68" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">UI: HTML, CSS, JavaScript (no framework, strict CSP)</text>
+<text x="68" y="184" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">pyla-core: rule model, validation, apply planner,</text>
+<text x="68" y="203" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">UFW and nftables parsers, JSONC import,</text>
+<text x="68" y="222" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">CVE classifier, mitigation registry</text>
+<text x="68" y="241" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">Italian and English interface</text>
+<rect x="52" y="376" width="396" height="170" rx="10" fill="#0d1117" stroke="#3d444d" stroke-width="1.2"/>
+<text x="68" y="404" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#e6edf3" text-anchor="start">Local database (SQLite)</text>
+<text x="68" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">rule sets and per-rule state</text>
+<text x="68" y="445" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">apply history with before/after snapshots</text>
+<text x="68" y="464" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">settings, followed CVEs, CVE cache (6 h)</text>
+<text x="68" y="483" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">~/.local/share/space.pyla.app/pyla.db</text>
+<path d="M250,286 L250,370" fill="none" stroke="#9198a1" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="262" y="332" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="#9198a1" text-anchor="start">read / write</text>
+<rect x="546" y="82" width="200" height="92" rx="10" fill="#0d1117" stroke="#4493f8" stroke-width="1.2"/>
+<text x="562" y="110" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#e6edf3" text-anchor="start">Ubuntu Security API</text>
+<text x="562" y="132" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">ubuntu.com/security</text>
+<text x="562" y="151" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">kernel CVEs, fixed versions</text>
+<rect x="756" y="82" width="200" height="92" rx="10" fill="#0d1117" stroke="#4493f8" stroke-width="1.2"/>
+<text x="772" y="110" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#e6edf3" text-anchor="start">Public profiles</text>
+<text x="772" y="132" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">github.com/pyla-dev/</text>
+<text x="772" y="151" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">pyla-profiles (fixed source)</text>
+<path d="M448,140 L538,140" fill="none" stroke="#9198a1" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="493" y="130" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="#9198a1" text-anchor="middle">HTTPS</text>
+<rect x="546" y="290" width="410" height="112" rx="10" fill="#0d1117" stroke="#f85149" stroke-width="1.2"/>
+<text x="562" y="318" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#ff7b72" text-anchor="start">pyla-helper</text>
+<text x="562" y="340" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">/usr/local/libexec/pyla/pyla-helper</text>
+<text x="562" y="359" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">JSON in / JSON out, size-limited requests</text>
+<text x="562" y="378" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">allow-listed commands, absolute paths, no shell</text>
+<rect x="546" y="456" width="130" height="92" rx="10" fill="#0d1117" stroke="#3d444d" stroke-width="1.2"/>
+<text x="562" y="484" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#e6edf3" text-anchor="start">UFW</text>
+<text x="562" y="506" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">/usr/sbin/ufw</text>
+<text x="562" y="525" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">rules, backups</text>
+<path d="M611,402 L611,450" fill="none" stroke="#9198a1" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="686" y="456" width="130" height="92" rx="10" fill="#0d1117" stroke="#3d444d" stroke-width="1.2"/>
+<text x="702" y="484" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#e6edf3" text-anchor="start">nftables</text>
+<text x="702" y="506" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">/usr/sbin/nft</text>
+<text x="702" y="525" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">ruleset (read)</text>
+<path d="M751,402 L751,450" fill="none" stroke="#9198a1" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="826" y="456" width="130" height="92" rx="10" fill="#0d1117" stroke="#3d444d" stroke-width="1.2"/>
+<text x="842" y="484" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#e6edf3" text-anchor="start">Kernel</text>
+<text x="842" y="506" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">sysctl, modprobe</text>
+<text x="842" y="525" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">/proc sockets</text>
+<path d="M891,402 L891,450" fill="none" stroke="#9198a1" stroke-width="1.6" marker-end="url(#arr)"/>
+<path d="M448,250 L500,250 L500,346 L540,346" fill="none" stroke="#9198a1" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="460" y="282" width="80" height="44" rx="8" fill="#ffb95c"/>
+<text x="500" y="300" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#0d1626" text-anchor="middle">pkexec</text>
+<text x="500" y="317" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="#0d1626" text-anchor="middle">polkit</text>
+</svg>

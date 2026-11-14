@@ -57,28 +57,13 @@ offers a one-click, fully reversible **temporary mitigation** until the patched 
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph User session
-        UI["PYLA UI<br/>Tauri 2 · HTML/CSS/JS"]
-        DB[("SQLite<br/>rule sets · history · settings")]
-        API{{"Ubuntu Security API<br/>ubuntu.com/security"}}
-        PROF{{"Public profiles<br/>github.com/pyla-dev/pyla-profiles"}}
-    end
-    subgraph Root
-        H["pyla-helper<br/>JSON in / JSON out"]
-        UFW["/usr/sbin/ufw"]
-        NFT["/usr/sbin/nft"]
-        SYS["/etc/sysctl.d · /etc/modprobe.d<br/>/proc/sys"]
-    end
-    UI <--> DB
-    UI -- HTTPS, read-only --> API
-    UI -- HTTPS, read-only --> PROF
-    UI -- "pkexec (polkit)" --> H
-    H --> UFW
-    H --> NFT
-    H --> SYS
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/architecture-dark.svg">
+    <img src="docs/img/architecture-light.svg" width="900"
+         alt="PYLA architecture: the desktop app runs as the user with a local SQLite database, reads the Ubuntu Security API and the public profiles over HTTPS, and reaches root only through pyla-helper, started with pkexec and authorised by polkit.">
+  </picture>
+</p>
 
 The workspace is split into three crates:
 
@@ -294,8 +279,8 @@ PYLA is maintained by the **pyla-dev** organisation. The design and implementati
 with **Claude** (Anthropic) working in Claude Code, under human direction, review and real-world
 validation on production machines.
 
-Additional help came from **Orbit**, a self-hosted AI agent, and from **Qwen3.8** (Qwen team, Alibaba
-Cloud), a model run on local hardware.
+Additional help came from **Orbit**, a self-hosted agent orchestrator, and from **Qwen3.8** (Qwen team,
+Alibaba Cloud), a model run on local hardware.
 
 ## Maintainers
 
