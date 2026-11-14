@@ -234,23 +234,55 @@ cargo test -p pyla      -- --ignored --nocapture   # live Ubuntu Security API qu
 
 ## Project status
 
-PYLA is an **early preview**. The user interface is in Italian and English (switch with the **IT/EN**
-button in the header). Roadmap:
+PYLA is an **early preview**: usable every day on a desktop, but young, with one maintainer team and no
+stability promise yet for the database or the import format beyond `"format_version": 1`.
 
+**Current release: [v0.2.13](https://github.com/pyla-dev/pyla/releases/tag/v0.2.13)**. Release notes
+list every change since v0.2.1.
+
+### What works today
+
+| Area | Status |
+|---|---|
+| Rule sets: create, duplicate, enable/disable rules, preview, apply with backup and rollback | ✅ Available |
+| Import from UFW, from JSONC files and from the public profiles | ✅ Available |
+| Listening services report and one-click `allow` rules | ✅ Available |
+| Read-only nftables ruleset viewer and exposure check (IPv4 and IPv6) | ✅ Available |
+| Ubuntu kernel CVEs, verdicts against the installed kernel, reversible mitigations | ✅ Available |
+| Italian and English interface, layout usable on small screens | ✅ Available |
+| `.deb` package with helper, polkit policy and sha256/sha512 checksums | ✅ Available |
+| Web mode (`pyla web`) for headless machines | 📝 Designed, not implemented |
+
+### Known limitations
+
+- **Ubuntu with UFW only**, tested on Ubuntu 26.04; the package is built for `amd64` only.
+- **Route rules and application-profile rules** in UFW are read but not managed: PYLA refuses to apply
+  while they exist instead of discarding them.
+- The import format cannot express `ufw limit` (rate limiting) or ICMP types.
+- Packages are verified with the published sha256/sha512 checksums; they are **not GPG-signed** yet.
+- No web or headless mode yet: `pyla` is a desktop binary (29 Tauri commands, no HTTP routes, no CLI
+  subcommands).
+
+### Roadmap
+
+Done:
 - [x] English UI and i18n
 - [x] `.deb` packaging with the helper and polkit policy
 - [x] Rule sets from JSONC files and from public profiles
 - [x] Listening services report with one-click rules
 - [x] Layout usable on small screens
-- [ ] **Web mode** — the same UI served over HTTP by the same binary (`pyla web`), so a
-      headless Ubuntu box can be managed from a browser through an SSH tunnel. The design is
-      accepted ([ADR-0001](docs/adr/0001-modalita-web.md)); the implementation has **not
-      started** beyond that design and the shared-state/event-bus groundwork, and it is **not in
-      any release**. Today `pyla` is a desktop binary: 29 Tauri commands, no HTTP routes, no CLI
-      subcommands.
+
+Next:
+- [ ] **Web mode** — the same UI served over HTTP by the same binary (`pyla web`), so a headless Ubuntu
+      box can be managed from a browser through an SSH tunnel. The design is accepted
+      ([ADR-0001](docs/adr/0001-modalita-web.md)); only the shared-state and event-bus groundwork exists,
+      and it is **not in any release**.
+- [ ] GPG-signed packages
+- [ ] Timed auto-rollback after apply
+
+Later:
 - [ ] Native nftables backend (own table, UFW optional)
 - [ ] `[UFW BLOCK]` journal viewer and per-rule hit counters
-- [ ] Timed auto-rollback after apply
 
 Decisions worth reading: [ADR-0001 — web/headless mode](docs/adr/0001-modalita-web.md)
 (why one binary and two transports, why `pkexec` cannot be the privileged channel on a headless
