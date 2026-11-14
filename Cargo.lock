@@ -2925,7 +2925,7 @@ dependencies = [
 
 [[package]]
 name = "pyla"
-version = "0.2.1"
+version = "0.2.13"
 dependencies = [
  "axum",
  "clap",
@@ -2945,7 +2945,7 @@ dependencies = [
 
 [[package]]
 name = "pyla-core"
-version = "0.2.1"
+version = "0.2.13"
 dependencies = [
  "serde",
  "serde_json",
@@ -2954,7 +2954,7 @@ dependencies = [
 
 [[package]]
 name = "pyla-helper"
-version = "0.2.1"
+version = "0.2.13"
 dependencies = [
  "pyla-core",
  "serde",

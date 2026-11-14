@@ -1,0 +1,42 @@
+// PYLA profile — "Workstation laptop"
+//
+// Goal: the sensible daily-driver baseline for a laptop. Everything outbound works
+// (you are on hotels, conferences, home Wi-Fi — breaking DNS/HTTP/UDP would just
+// make you disable the firewall). Nothing inbound except traffic that belongs to
+// connections you started yourself. Management (SSH) present but OFF: one switch
+// in PYLA when you need it, never silently open.
+//
+// What UFW does by itself (shown in PYLA's "UFW status" page, not rewritten here):
+// established/related inbound (this is why no "allow ping replies" rule exists)
+// and the default inbound deny.
+//
+// Not expressible in PYLA's UFW-tuple model (add by hand in UFW if you need it):
+// `ufw limit` rate limiting, and ICMP type filtering.
+{
+  "name": "Workstation laptop",
+  "description": "Daily-driver baseline: full outbound, inbound only established/related, default-deny. SSH present but disabled.",
+  "format_version": 1,
+  "enabled": true,
+  "rules": [
+    // ---- loopback: local services (databases, dev servers, sandboxed apps)
+    //      must keep working; the firewall never touches localhost ----
+    { "action": "allow", "direction": "in",  "interface": "lo", "proto": "any", "src": "any", "dst": "any", "comment": "loopback in" },
+    { "action": "allow", "direction": "out", "interface": "lo", "proto": "any", "src": "any", "dst": "any", "comment": "loopback out" },
+
+    // ---- explicit silence on the two ports that laptops leak the most: mDNS
+    //      (Bonjour/Avahi announces your hostname on every hotel Wi-Fi) and SSDP
+    //      (UPnP discovery). OFF by default = you keep LAN discovery; switch them
+    //      ON to go quiet on untrusted networks ----
+    { "action": "deny", "direction": "in", "proto": "udp", "src": "any", "dst": "any", "dport": "5353", "enabled": false, "comment": "block mDNS inbound (quiet mode)" },
+    { "action": "deny", "direction": "in", "proto": "udp", "src": "any", "dst": "any", "dport": "1900", "enabled": false, "comment": "block SSDP/UPnP inbound (quiet mode)" },
+
+    // ---- management: SSH exists but sleeps. Enable it from the set detail in
+    //      PYLA only when you need remote access, and narrow the source first ----
+    { "action": "allow", "direction": "in", "proto": "tcp", "src": "192.0.2.0/24", "dst": "any", "dport": "22", "enabled": false, "comment": "ssh from management net (off)" },
+
+    // ---- belt and braces: the default inbound deny already covers this, but
+    //      writing it makes the intent visible in the rule list (PYLA's import
+    //      keeps it as the last rule, like UFW does) ----
+    { "action": "deny", "direction": "in", "proto": "any", "src": "any", "dst": "any", "comment": "default deny inbound (explicit)" }
+  ]
+}

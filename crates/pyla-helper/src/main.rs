@@ -7,6 +7,7 @@
 //!   pyla-helper enable | disable  -> UfwStatus
 //!   pyla-helper ruleset           -> {"text": output di `nft list ruleset`}
 //!   pyla-helper mitigate < {id,on} -> MitigateReport (mitigazioni CVE temporanee)
+//!   pyla-helper listening         -> Report dei servizi in ascolto con i processi di tutti gli utenti
 //!
 //! Non usa mai una shell: `ufw` viene eseguito con argomenti già validati da
 //! pyla-core. Prima di ogni modifica salva `user.rules`/`user6.rules` e, se un
@@ -65,8 +66,10 @@ fn main() -> ExitCode {
             "disable" => set_enabled(false).and_then(to_json),
             "ruleset" => ruleset().and_then(to_json),
             "mitigate" => mitigate().and_then(to_json),
+            // sola lettura di /proc: da root vede i processi di tutti gli utenti
+            "listening" => to_json(pyla_core::listening::report(Path::new("/"), true)),
             _ => Err(format!(
-                "comando sconosciuto: {cmd:?} (status|apply|enable|disable|ruleset|mitigate)"
+                "comando sconosciuto: {cmd:?} (status|apply|enable|disable|ruleset|mitigate|listening)"
             )),
         }
     };

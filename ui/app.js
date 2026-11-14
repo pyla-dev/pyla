@@ -9,6 +9,7 @@ const state = {
   status: null,
   rulesets: [],
   selected: null, // Ruleset completo
+  view: "firewall", // pagina attiva nella barra sinistra
 };
 
 // ---------- utilità ----------
@@ -29,10 +30,13 @@ const PATTERNS = [
   [/^Regole aggiunte \((\d+)\)$/, "Rules added ($1)"],
   [/^Comandi che verranno eseguiti \((\d+)\)$/, "Commands to be run ($1)"],
   [/^(\d+) regole$/, "$1 rules"],
+  [/^(\d+) disabilitate$/, "$1 disabled"],
+  [/^(\d+) duplicate scartate$/, "$1 duplicates dropped"],
   [/· ([\d.,]+) pacchetti$/, "· $1 packets"],
   [/^(\d+) catene$/, "$1 chains"],
   [/^(\d+) di (\d+)$/, "$1 of $2"],
   [/^Kernel (.+): CVE aperte high\/critical su (.+)$/, "Kernel $1: open high/critical CVEs on $2"],
+  [/^· (\d+) corrette nascoste$/, "· $1 resolved hidden"],
   [/^nessuno stato Ubuntu per (.+) su (.+)$/, "No Ubuntu status for $1 on $2"],
   [/^(.+) su (.+): (.+) \(installata (.+)\)$/, "$1 on $2: $3 (installed $4)"],
   [/→ corretta in (.+)/, "→ fixed in $1"],
@@ -50,6 +54,10 @@ const PATTERNS = [
   [/^Helper non installato \((.*)\): puoi preparare i set, ma per leggere o applicare le regole esegui una volta (.+) dalla cartella del progetto\.$/,
     "Helper not installed ($1): you can prepare sets, but to read or apply rules run once $2 from the project folder."],
   [/ \(copia\)$/, " (copy)"],
+  // ---- report (porte in ascolto) ----
+  [/^(\d+) in ascolto · (\d+) raggiungibili dalla rete · (.+)$/,
+    (_, n, net, who) => `${n} listening · ${net} reachable from the network · ${EXACT[who] ?? who}`],
+  [/^(\d+) porte appartengono a processi di altri utenti \(servizi di sistema\):$/, "$1 ports belong to other users' processes (system services):"],
   [/^Porte TCP in ascolto fuori dal loopback \((\d+)\):$/, "TCP ports listening outside loopback ($1):"],
   [/^(.*) — condizioni non valutate: (.+)$/, "$1 — conditions not evaluated: $2"],
   [/^in ascolto solo su loopback: non raggiungibile dalla rete$/, "listening on loopback only: not reachable from the network"],
@@ -57,6 +65,39 @@ const PATTERNS = [
   [/^nessuna catena con hook input nel ruleset$/, "no chain with input hook in the ruleset"],
   [/^nessuna regola intercetta il traffico e tutte le catene input hanno policy accept$/, "no rule intercepts the traffic; all input chains have accept policy"],
 ];
+
+Object.assign(EXACT, {
+  // ---- report (porte in ascolto, come la scheda Report di Gufw) ----
+  "Report": "Report",
+  "Porte TCP e UDP in ascolto e processi che le aprono": "Listening TCP and UDP ports and the processes that open them",
+  "processi di tutti gli utenti": "processes of all users",
+  "solo i tuoi processi": "your processes only",
+  "Rilegge le porte in ascolto": "Re-reads the listening ports",
+  "Mostra tutti i processi": "Show all processes",
+  "Legge i processi di tutti gli utenti come root (chiede l'autenticazione)": "Reads the processes of all users as root (asks for authentication)",
+  "Lettura delle porte in ascolto\u2026": "Reading the listening ports\u2026",
+  "Servizi che accettano connessioni TCP o datagrammi UDP su questa macchina.": "Services accepting TCP connections or UDP datagrams on this machine.",
+  "Quelli in ascolto solo su loopback (locale) non sono raggiungibili dalla rete.": "Those listening on loopback only (local) are not reachable from the network.",
+  "Con": "Use",
+  "crei una regola allow per la porta nel set selezionato.": "to create an allow rule for the port in the selected set.",
+  "1 porta appartiene a un processo di un altro utente (servizio di sistema):": "1 port belongs to another user's process (a system service):",
+  "Filtra (es. 22, udp, sshd, root)": "Filter (e.g. 22, udp, sshd, root)",
+  "nascondi quelle solo locali": "hide local-only ports",
+  "il nome compare con Mostra tutti i processi, che li legge come root.": "the names appear with Show all processes, which reads them as root.",
+  "Nessuna porta corrisponde al filtro.": "No port matches the filter.",
+  "Nessuna porta in ascolto.": "No listening ports.",
+  "solo locale": "local only",
+  "tutte le interfacce": "all interfaces",
+  "un indirizzo": "one address",
+  "Porta": "Port",
+  "Indirizzo": "Address",
+  "Ascolto": "Listening on",
+  "Processo": "Process",
+  "Utente": "User",
+  "+ Regola": "+ Rule",
+  "Crea una regola allow per questa porta nel set selezionato": "Create an allow rule for this port in the selected set",
+  "Crea prima un set di regole nella pagina Firewall.": "Create a rule set in the Firewall page first.",
+});
 
 Object.assign(EXACT, {
   // ---- exposure check (pillole verdetto e pulsante) ----
@@ -72,6 +113,33 @@ Object.assign(EXACT, {
 });
 
 Object.assign(EXACT, {
+  // ---- barra sinistra / barra superiore (stile Orbit) ----
+  "Mostra o nascondi la barra laterale (Ctrl+B)": "Show or hide the sidebar (Ctrl+B)",
+  "Apri la barra laterale": "Open the sidebar",
+  "Viste": "Views",
+  "Stato e azioni globali": "Status and global actions",
+  "Set di regole": "Rule sets",
+  "Firewall": "Firewall",
+  "Set di regole e applicazione a UFW": "Rule sets and how they map to UFW",
+  "Applicazioni passate con esito e dettagli": "Past applies with result and details",
+  "Seleziona un set o creane uno nuovo.": "Select a set or create a new one.",
+  "regole abilitate": "rules enabled",
+  "\u00b7 applicato": "\u00b7 applied",
+  "tabelle": "tables",
+  "catene": "chains",
+  "CVE in cache locale": "CVEs in local cache",
+  "kernel": "kernel",
+  "di ubuntu.com": "from ubuntu.com",
+  "regole utente": "user rules",
+  "Regole utente presenti ora in UFW": "User rules currently in UFW",
+  "attivo": "active",
+  "disattivato": "inactive",
+  "Riprova": "Try again",
+  "Lettura delle regole attuali di UFW\u2026": "Reading the current UFW rules\u2026",
+  "Lettura del ruleset del kernel\u2026": "Reading the kernel ruleset\u2026",
+  "Pu\u00f2 chiedere l'autenticazione.": "It may ask for authentication.",
+  "Rilegge UFW (può chiedere l'autenticazione)": "Re-reads UFW (may ask for authentication)",
+  "Rilegge il ruleset del kernel (può chiedere l'autenticazione)": "Re-reads the kernel ruleset (may ask for authentication)",
   // ---- index.html (cornice, form regola/set) ----
   "Stato UFW": "UFW status",
   "Legge le regole presenti ora in UFW (chiede l'autenticazione)": "Reads the rules currently in UFW (asks for authentication)",
@@ -83,6 +151,37 @@ Object.assign(EXACT, {
   "Set di regole": "Rule sets",
   "Nuovo set": "New set",
   "Importa da UFW": "Import from UFW",
+  "Importa da file": "Import from file",
+  "Crea un set dalle regole di un file JSONC": "Create a set from the rules in a JSONC file",
+  // dialog import. applyLang() traduce i text node, quindi il paragrafo con <code>
+  // va spezzato nei due testi attorno al tag; le chiavi sono in IT -> EN (la lingua
+  // di partenza dell'HTML) e valgono anche al contrario per il reload in IT.
+  "Importa un set da file": "Import a set from a file",
+  "File JSONC con le regole del set. Le righe che iniziano con": "JSONC file with the rules of the set. Lines starting with",
+  '{ "name": "il mio set", "rules": [ { "action": "allow", "direction": "in", "proto": "tcp", "dport": "443" } ] }':
+    '{ "name": "my set", "rules": [ { "action": "allow", "direction": "in", "proto": "tcp", "dport": "443" } ] }',
+  // etichetta nativa del selettore di file: WebKit/GTK la disegna in italiano quando
+  // la pagina e' IT e la lascia in inglese quando il documento passa a EN, perche' non
+  // e' un text node. La sovrascriviamo noi, cosi' il dialog resta coerente.
+  "Scegli file": "Choose File",
+  "nessun file selezionato": "no file selected",
+  "sono commenti e vengono ignorate; i nomi dei campi sono in inglese perché il formato è quello condiviso con l'infrastruttura.": "are comments and are ignored; field names are in English because that is the format shared with the infrastructure.",
+  "Set importato": "Imported set",
+  "Incolla il contenuto del file o scegli un file.": "Paste the file contents, or pick a file.",
+  "File troppo grande (oltre 2 MB).": "File too large (over 2 MB).",
+  "Profili pubblici": "Public profiles",
+  "Profili disponibili": "Available profiles",
+  "Lettura dei profili da GitHub…": "Reading the profiles from GitHub…",
+  "Nessun profilo nel repository.": "No profiles in the repository.",
+  "Rischio": "Risk",
+  // etichette "<testo>: <errore>": la chiave e' il testo SENZA ": " (vedi tr())
+  "Elenco dei profili non disponibile": "Profile list not available",
+  "Profilo non scaricabile": "Could not download the profile",
+  "Lettura del file fallita": "Could not read the file",
+  "regole": "rules",
+  "disabilitate": "disabled",
+  // toast esito import: la forma con segnaposti NON e' una chiave usata (il guscio
+  // lo traduce il ramo regex di tr()), quindi qui restano solo i frammenti.
   "Crea un set con le regole presenti ora in UFW": "Create a set from the rules currently in UFW",
   "Seleziona un set o creane uno nuovo.": "Select a set or create a new one.",
   "Per partire dalle regole attuali usa": "To start from the current rules use",
@@ -202,6 +301,8 @@ Object.assign(EXACT, {
   "nascondi catene vuote": "hide empty chains",
   "Aggiorna": "Refresh",
   "Copia testo": "Copy text",
+  "Copia il testo della mitigazione": "Copy the mitigation text",
+  "Copia il testo della descrizione": "Copy the description text",
   "Pacchetti": "Packets",
   "Catena vuota.": "Empty chain.",
   "Nessuna corrispondenza.": "No matches.",
@@ -214,6 +315,10 @@ Object.assign(EXACT, {
   "Segui": "Follow",
   "seguita": "followed",
   "Filtra elenco (es. tcp, mptcp, sctp)": "Filter list (e.g. tcp, mptcp, sctp)",
+  "nascondi corrette": "hide resolved",
+  "Mostrale": "Show them",
+  "Nessuna CVE vulnerabile o da aggiornare in elenco:": "No vulnerable or to-update CVE in the list:",
+  "corrette sono nascoste dal filtro.": "resolved ones are hidden by the filter.",
   "Caricamento…": "Loading…",
   "Caricamento da ubuntu.com…": "Loading from ubuntu.com…",
   "Priorità": "Priority",
@@ -277,6 +382,14 @@ Object.assign(EXACT, {
 
 // Le frasi del helper con id/etichette dinamiche.
 PATTERNS.push(
+  // sottotitolo della barra superiore (dinamico, cambia con la pagina attiva)
+  [/^(\d+)\/(\d+) regole abilitate · applicato$/, "$1/$2 rules enabled · applied"],
+  [/^(attivo|disattivato) · entrata (.+), uscita (.+), inoltro (.+) · (\d+) regole utente$/,
+    "$1 · in $2, out $3, fwd $4 · $5 user rules"],
+  [/^(\d+) tabelle · (\d+) catene$/, "$1 tables · $2 chains"],
+  [/^(\d+) applicazioni registrate$/, "$1 applies recorded"],
+  [/^kernel (.+) · (\d+) CVE in cache locale su (\d+) di ubuntu\.com$/,
+    "kernel $1 · $2 CVEs in local cache of $3 from ubuntu.com"],
   [/^applicate (\d+) regole$/, "applied $1 rules"],
   [/^(.*): ripristinate le regole precedenti$/, "$1: previous rules restored"],
   [/ripristino fallito \((.*)\), backup in (.*)$/, "restore failed ($1), backup at $2"],
@@ -334,6 +447,25 @@ PATTERNS.push(
   [/^le regole (\d+) e (\d+) sono uguali \(UFW salterebbe la seconda\)$/, "rules $1 and $2 are identical (UFW would skip the second)"],
   [/^nessuna regola corrisponde; policy drop di (\S+)$/, "no rule matches; drop policy of $1"],
   [/ — condizioni non valutate: /, " — conditions not evaluated: "],
+  // import da file JSONC (pyla_core::import); il prefisso "regola N: " lo toglie tr()
+  [/^JSON non valido: (.*) \(riga (\d+)\)$/, "invalid JSON: $1 (line $2)"],
+  [/^format_version (\d+) non supportato: PYLA (\S+) legge al massimo la versione (\d+); aggiorna PYLA prima di importare questo profilo$/,
+    "format_version $1 not supported: PYLA $2 reads at most version $3; update PYLA before importing this profile"],
+  [/^troppe regole: (\d+) \(massimo (\d+)\)$/, "too many rules: $1 (max $2)"],
+  [/^duplicato di una regola precedente: /, "duplicate of an earlier rule: "],
+  [/ — i campi accettati a livello di file sono: (.+) \(i campi delle regole stanno dentro "rules"\)$/,
+    ' — fields accepted at file level are: $1 (rule fields go inside "rules")'],
+  [/^azione non valida (.+) \(allow, deny, reject, limit\)$/, "invalid action $1 (allow, deny, reject, limit)"],
+  [/^direzione non valida (.+) \(in, out\)$/, "invalid direction $1 (in, out)"],
+  [/^protocollo non valido (.+) \(tcp, udp, any\)$/, "invalid protocol $1 (tcp, udp, any)"],
+  [/^log non valido (.+) \(off, log, log-all\)$/, "invalid log $1 (off, log, log-all)"],
+  [/ \(massimo 15 porte\)$/, " (max 15 ports)"],
+  [/^non e' un file: /, "not a file: "],
+  // riepilogo di una regola (ruleText e RuleSpec::summary): "... da <src> a <dst>"
+  [/\bda (any|[0-9a-f.:/]+(?: ?: ?[\d,:]+)?) a (any|[0-9a-f.:/]+)/i, "from $1 to $2"],
+  // sottotitolo di "Stato UFW": "attivo · entrata deny, uscita allow, ..."
+  [/^attivo · /, "active · "],
+  [/^disattivato · /, "inactive · "],
 );
 
 Object.assign(EXACT, {
@@ -344,6 +476,11 @@ Object.assign(EXACT, {
   "autenticazione annullata": "authentication cancelled",
   "autenticazione negata o helper non autorizzato da polkit": "authentication denied or helper not authorized by polkit",
   "database bloccato": "database locked",
+  "nessuna regola nel file": "no rules in the file",
+  "file troppo grande (oltre 2 MB)": "file too large (over 2 MB)",
+  "Importa": "Import",
+  "Le CVE gia' corrette sul kernel installato o non pertinenti restano fuori dall'elenco; il contatore sopra dice quante ne sono nascoste.":
+    "CVEs already fixed in the installed kernel, or not relevant, stay out of the list; the counter above says how many are hidden.",
   "Importato da UFW": "Imported from UFW",
   "pyla-helper va avviato come root (tramite pkexec)": "pyla-helper must run as root (via pkexec)",
   "mitigazione scritta ma non applicata subito: vedi dettagli": "mitigation written but not applied immediately: see details",
@@ -376,15 +513,38 @@ function tr(s) {
     // "<etichetta IT>: <resto>" (es. "Blocca il modulo sctp: effettiva al prossimo riavvio")
     const i = out.indexOf(": ");
     if (i > 0 && EXACT[out.slice(0, i)] !== undefined) out = EXACT[out.slice(0, i)] + out.slice(i);
+    // "Set «nome» importato (3 regole, 1 disabilitate)": il nome del set e' un dato,
+    // quello che va tradotto e' il resto. Si traduce il guscio con la forma vuota e
+    // si ricompone; i frammenti dentro le parentesi passano gia' da EXACT/PATTERNS.
+    // "regola 7: <errore>" dall'import: si traduce il prefisso e l'errore per conto suo
+    // (i pattern degli errori sono ancorati a inizio stringa)
+    const rule = /^regola (\d+): (.*)$/s.exec(out);
+    if (rule) out = `rule ${rule[1]}: ${tr(rule[2])}`;
+    // "Ordina per <colonna>": la colonna passa dal dizionario
+    const sortBy = /^Sort by (.+)$/.exec(out);
+    if (sortBy && EXACT[sortBy[1]] !== undefined) out = `Sort by ${EXACT[sortBy[1]]}`;
+    const imp = /^Set «(.*)» importato \((.*)\)$/.exec(out);
+    if (imp) {
+      // i conteggi sono una lista di pezzi ("3 regole, 1 disabilitate"): ognuno passa
+      // da PATTERNS/EXACT, cosi' il toast in inglese esce per intero tradotto
+      const parts = imp[2].split(", ").map((x) => tr(x)).join(", ");
+      out = `Imported set «${imp[1]}» (${parts})`;
+    }
     if (out === t) return s;
   }
   return s.replace(t, out);
 }
 
-const I18N_SKIP = new Set(["SCRIPT", "STYLE"]);
+// PRE/CODE esclusi: i blocchi di comandi delle note di mitigazione non si
+// traducono, e i pattern di tr() spezzerebbero i comandi multi-riga.
+const I18N_SKIP = new Set(["SCRIPT", "STYLE", "PRE", "CODE"]);
 
 /** Sostituisce nei nodi di testo e negli attributi titolo/placeholder del sottoalbero. */
 function applyLang(root) {
+  // Le etichette del widget nativo di scelta file NON sono text node ne' attributi: sono
+  // un pseudo-elemento (::file-selector-button) che il toolkit disegna nella lingua di
+  // sistema. Si localizzano con regole CSS agganciate a html[lang] (sotto, in style.css),
+  // perche' applyLang qui dentro non puo' raggiungerle in nessun modo.
   if (LANG !== "en") return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let n;
@@ -396,6 +556,12 @@ function applyLang(root) {
   }
   if (root.nodeType !== Node.ELEMENT_NODE) return;
   const els = [root, ...root.querySelectorAll("[title], [placeholder], [aria-label]")];
+  // il testo del widget nativo di scelta file non e' un text node ne' un attributo:
+  // va sostituito con il valore localizzato via CSS (i18n-file-label sotto).
+  for (const el of root.querySelectorAll?.("input[type=file]") ?? []) {
+    el.style.setProperty("--file-choose", JSON.stringify(tr("Scegli file")));
+    el.style.setProperty("--file-none", JSON.stringify(tr("nessun file selezionato")));
+  }
   for (const el of els) {
     for (const a of ["title", "placeholder", "aria-label"]) {
       const v = el.getAttribute(a);
@@ -449,6 +615,11 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+/** Figli per replaceChildren: filtra null/undefined/false, come fa gia' h().
+ *  Serve perche' il DOM NON lo fa: `el.replaceChildren(x, null)` converte null nel
+ *  testo "null" (e' la riga "null" comparsa in fondo all'elenco CVE). */
+const kids = (...a) => a.flat().filter((c) => c !== null && c !== undefined && c !== false);
+
 let toastTimer;
 function toast(msg, bad = false) {
   const t = $("#toast");
@@ -481,16 +652,78 @@ async function busy(button, busyText, fn) {
   }
 }
 
-function closeOnButtons(dlg) {
-  dlg.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => dlg.close()));
+/** Dopo un'applicazione o una mitigazione le viste "lettura dal kernel" non valgono piu'. */
+function invalidateReadViews() {
+  liveView.rules = null;
+  liveView.status = null;
+  liveView.error = null;
+  nftView.data = null;
+  historyView.rows = null;
+  historyView.error = null;
+  cveView.expo = null;
+}
+
+// ---------- pannelli a pagina intera (niente popup) ----------
+// Regole, set, import, info e conferme non sono dialog: sono pannelli che sostituiscono
+// la pagina dentro <main>. Su telefono un dialog modale non e' utilizzabile (campi
+// stretti, tastiera che copre meta' schermo, rotellina del mouse al posto dello scroll),
+// e il pulsante "Annulla" di dlg-import non era nemmeno collegato: closeOnButtons veniva
+// chiamato solo su dlg-rule e dlg-set. Un pannello ha una sola via di uscita, collegata
+// per tutti allo stesso modo.
+const PANEL_IDS = ["panel-rule", "panel-set", "panel-import", "panel-info"];
+let openPanelId = null;
+
+function showPanel(id, focusSel) {
+  for (const p of PANEL_IDS) if (p !== id) $("#" + p).hidden = true;
+  $("#view").hidden = true;
+  const p = $("#" + id);
+  p.hidden = false;
+  openPanelId = id;
+  document.body.classList.add("panel-open");
+  // dal punto in alto: su telefono il pannello scorre e la posizione di scroll della
+  // pagina resterebbe a meta' del contenuto precedente
+  p.scrollTop = 0;
+  const target = (focusSel && p.querySelector(focusSel)) ||
+    p.querySelector("input:not([type=checkbox]):not([type=file]), select, textarea") ||
+    p.querySelector("button");
+  if (target) target.focus();
+}
+
+function closePanel() {
+  if (!openPanelId) return;
+  // una conferma rimasta aperta (cambio pagina, "Chiuso" di un altro pannello) va
+  // risolta a false: la funzione che la aspettava non deve restare appesa per sempre.
+  const pending = panelCancel;
+  panelCancel = null;
+  $("#" + openPanelId).hidden = true;
+  openPanelId = null;
+  $("#view").hidden = false;
+  document.body.classList.remove("panel-open");
+  if (pending) pending();
+}
+
+// Annulla/Chiudi di un pannello info: se una conferma e' ancora aperta va risolta a
+// false, altrimenti chiuderla cambiando pagina lascia la chiamata in await per sempre.
+let panelCancel = null;
+
+const panelIsOpen = () => openPanelId !== null;
+const panelEl = () => (openPanelId ? $("#" + openPanelId) : null);
+
+function closeOnButtons(root) {
+  root.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closePanel));
 }
 
 function ep(addr, port) {
   return port ? `${addr} : ${port}` : addr;
 }
 
+// Le etichette delle celle non sono solo la testa della tabella: su telefono il CSS
+// trasforma ogni riga in una scheda a due colonne e recupera il nome del campo da
+// data-label (stessa informazione, due usi).
+const RULE_COLS = ["Azione", "Direzione", "Interfaccia", "Protocollo", "Sorgente", "Destinazione", "Commento"];
+
 function ruleCells(s) {
-  return [
+  const cells = [
     h("td", {}, h("span", { class: `act-${s.action}` }, s.action), s.log !== "off" ? " ✎" : ""),
     h("td", {}, s.direction),
     h("td", {}, s.interface || "—"),
@@ -499,6 +732,8 @@ function ruleCells(s) {
     h("td", { class: "mono" }, ep(s.dst, s.dport)),
     h("td", { class: "comment", title: s.comment || "" }, s.comment || ""),
   ];
+  cells.forEach((c, i) => c.setAttribute("data-label", RULE_COLS[i]));
+  return cells;
 }
 
 function ruleText(s) {
@@ -539,57 +774,285 @@ async function loadStatus() {
   renderStatus();
 }
 
+// ---------- barra sinistra a scomparsa (stile Orbit) ----------
+// Le quattro voci che stavano nella barra superiore sono ora pagine della barra
+// sinistra: una sola vista alla volta in #view, nessun dialog. La lista dei set
+// compare solo sotto la pagina Firewall (come le chat di un bot in Orbit).
+
+const ICON = {
+  shield: '<path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6l7-3z"/>',
+  list: '<path d="M4 6h16M4 12h16M4 18h9"/>',
+  layers: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  radar: '<circle cx="12" cy="12" r="2"/><path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.6 18.4a9 9 0 0 1 0-12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
+};
+
+/** Icona a trattini (niente font esterni: CSP = script-src 'self', offline). */
+function icon(paths) {
+  const el = document.createElement("span");
+  el.className = "ico";
+  el.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+    `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  return el;
+}
+
+const PAGES = [
+  { view: "firewall", label: "Firewall", hint: "Set di regole e applicazione a UFW", icon: ICON.shield },
+  { view: "live", label: "Stato UFW", hint: "Legge le regole presenti ora in UFW (chiede l'autenticazione)", icon: ICON.list },
+  { view: "nft", label: "Ruleset completo", hint: "Tutte le tabelle e catene del kernel (UFW, Docker, libvirt\u2026), in sola lettura", icon: ICON.layers },
+  { view: "report", label: "Report", hint: "Porte TCP e UDP in ascolto e processi che le aprono", icon: ICON.radar },
+  { view: "cve", label: "CVE", hint: "Vulnerabilit\u00e0 del kernel Ubuntu in uso (Ubuntu Security API)", icon: ICON.alert },
+  { view: "history", label: "Storico", hint: "Applicazioni passate con esito e dettagli", icon: ICON.clock },
+];
+
+// viste a elenco: scrolla solo il corpo, titoli e filtri restano fissi in alto
+const FILL_VIEWS = new Set(["cve", "nft"]);
+
+const rail = {
+  collapsed: localStorage.getItem("pyla.rail.collapsed") === "1",
+  drawerOpen: false, // cassetto aperto, solo su finestra stretta (non persistito)
+  narrow: false,
+};
+
+const NARROW = window.matchMedia ? window.matchMedia("(max-width: 820px)") : null;
+rail.narrow = !!(NARROW && NARROW.matches);
+
+/** Applica lo stato della barra: larghezza 0 se nascosta; su finestra stretta
+ *  diventa cassetto sopra il contenuto (fascia sul bordo per aprire, velo per chiudere). */
+function railApply() {
+  const sb = $("#sidebar");
+  if (!sb) return;
+  const hidden = rail.narrow ? !rail.drawerOpen : rail.collapsed;
+  sb.classList.toggle("collapsed", hidden);
+  const btn = $("#btn-rail");
+  if (btn) btn.setAttribute("aria-expanded", String(!hidden));
+  document.querySelectorAll(".drawer-edge, .drawer-backdrop").forEach((el) => el.remove());
+  if (rail.narrow) {
+    document.body.append(
+      rail.drawerOpen
+        ? h("div", { class: "drawer-backdrop", onclick: () => railToggle() })
+        : h("div", { class: "drawer-edge", title: "Apri la barra laterale", onclick: () => railToggle() })
+    );
+  }
+}
+
+function railToggle() {
+  if (NARROW) rail.narrow = NARROW.matches; // rilegge la larghezza reale: niente valori stantii
+  if (rail.narrow) rail.drawerOpen = !rail.drawerOpen;
+  else {
+    rail.collapsed = !rail.collapsed;
+    localStorage.setItem("pyla.rail.collapsed", rail.collapsed ? "1" : "0");
+  }
+  railApply();
+}
+
+/** Scelta una pagina o un set, il cassetto si richiude da solo (come in Orbit). */
+function railCloseDrawer() {
+  if (rail.narrow && rail.drawerOpen) {
+    rail.drawerOpen = false;
+    railApply();
+  }
+}
+
+if (NARROW) {
+  const onNarrow = (e) => {
+    rail.narrow = e.matches;
+    rail.drawerOpen = false;
+    railApply();
+  };
+  if (NARROW.addEventListener) NARROW.addEventListener("change", onNarrow);
+  else NARROW.addListener(onNarrow); // Safari/WebKit vecchi
+}
+
+/** Contatori nelle voci della barra: dicono cosa c'è dentro una pagina senza aprirla. */
+function navBadge(view) {
+  if (view === "firewall" && state.rulesets.length) return String(state.rulesets.length);
+  if (view === "cve" && cveView.watch) return String(cveView.watch.items.length);
+  if (view === "history" && historyView.rows) return String(historyView.rows.length);
+  if (view === "report" && reportView.data) return String(reportView.data.sockets.length);
+  return null;
+}
+
+function renderNav() {
+  const nav = $("#main-nav");
+  if (!nav) return;
+  nav.replaceChildren(...PAGES.map((p) => {
+    const badge = navBadge(p.view);
+    return h(
+      "button",
+      {
+        class: `nav-item${state.view === p.view ? " active" : ""}`,
+        title: p.hint,
+        onclick: () => setView(p.view),
+      },
+      icon(p.icon),
+      h("span", { class: "nav-label" }, p.label),
+      badge ? h("span", { class: "pill muted" }, badge) : null
+    );
+  }));
+  const sub = $("#sets-rail");
+  if (sub) sub.hidden = state.view !== "firewall";
+}
+
+/** Titolo, sottotitolo e azioni della barra superiore: cambiano con la pagina. */
+function renderHeader() {
+  const page = PAGES.find((p) => p.view === state.view) || PAGES[0];
+  const title = $("#view-title");
+  const sub = $("#view-sub");
+  const actions = $("#view-actions");
+  const rs = state.selected;
+  let name = page.label, note = page.hint;
+  if (state.view === "firewall") {
+    if (rs) {
+      const on = rs.rules.filter((r) => r.enabled).length;
+      name = rs.name;
+      note = `${on}/${rs.rules.length} regole abilitate` + (rs.active ? " \u00b7 applicato" : "");
+    } else note = "Seleziona un set o creane uno nuovo.";
+  } else if (state.view === "live" && liveView.status) {
+    const st = liveView.status;
+    note = `${st.enabled ? "attivo" : "disattivato"} \u00b7 entrata ${st.defaults.incoming}, uscita ${st.defaults.outgoing}, ` +
+      `inoltro ${st.defaults.routed} \u00b7 ${(liveView.rules || []).length} regole utente`;
+  } else if (state.view === "nft" && nftView.data) {
+    const chains = nftView.data.tables.reduce((a, t) => a + t.chains.length, 0);
+    note = `${nftView.data.tables.length} tabelle \u00b7 ${chains} catene`;
+  } else if (state.view === "report" && reportView.data) {
+    const ss = reportView.data.sockets;
+    const net = ss.filter((x) => x.scope !== "locale").length;
+    note = `${ss.length} in ascolto \u00b7 ${net} raggiungibili dalla rete \u00b7 ` +
+      (reportView.data.privileged ? "processi di tutti gli utenti" : "solo i tuoi processi");
+  } else if (state.view === "cve" && cveView.page) {
+    const sys = cveView.page.system;
+    note = `kernel ${sys.kernel} \u00b7 ${cveView.items.length} CVE in cache locale su ${cveView.page.total} di ubuntu.com`;
+  }
+  title.textContent = name;
+  sub.textContent = note;
+  actions.replaceChildren(...kids(viewActions()));
+}
+
+/** Bottoni di servizio della pagina corrente (in alto a destra, stile Orbit). */
+function viewActions() {
+  switch (state.view) {
+    case "live":
+      return [h("button", {
+        class: "ghost", title: "Rilegge UFW (può chiedere l'autenticazione)",
+        onclick: () => { liveView.rules = null; liveView.error = null; setView("live"); },
+      }, "Aggiorna")];
+    case "nft":
+      return [
+        h("button", {
+          class: "ghost", title: "Rilegge il ruleset del kernel (può chiedere l'autenticazione)",
+          onclick: () => { nftView.data = null; setView("nft"); },
+        }, "Aggiorna"),
+        h("button", {
+          class: "ghost",
+          onclick: async () => { await navigator.clipboard.writeText(nftView.data.text); toast("Copiato"); },
+        }, "Copia testo"),
+      ];
+    case "cve":
+      return [h("button", { class: "ghost", onclick: () => setView("cve") }, "Aggiorna")];
+    case "report":
+      return [
+        h("button", {
+          class: "ghost", title: "Rilegge le porte in ascolto",
+          onclick: () => reportReload(reportView.data?.privileged || false),
+        }, "Aggiorna"),
+        reportView.data && !reportView.data.privileged ? h("button", {
+          class: "ghost", title: "Legge i processi di tutti gli utenti come root (chiede l'autenticazione)",
+          onclick: () => reportReload(true),
+        }, "Mostra tutti i processi") : null,
+      ].filter(Boolean);
+    case "history":
+      return [h("button", { class: "ghost", onclick: () => { historyView.rows = null; historyView.error = null; setView("history"); } }, "Aggiorna")];
+    default:
+      return [];
+  }
+}
+
+function setView(view) {
+  if (!PAGES.some((p) => p.view === view)) view = "firewall";
+  // cambiare pagina chiude il pannello aperto: la barra laterale resta sempre cliccabile
+  // (non c'e' nessun modale che la blocca) e il contenuto sotto deve tornare visibile.
+  closePanel();
+  state.view = view;
+  localStorage.setItem("pyla.view", view);
+  railCloseDrawer();
+  renderNav();
+  const box = $("#view");
+  box.className = "view" + (FILL_VIEWS.has(view) ? " fill" : "");
+  box.replaceChildren();
+  const r = VIEW_RENDER[view]();
+  // le viste di lettura dal kernel sono asincrone: il sottotitolo si completa quando arrivano i dati
+  if (r && typeof r.then === "function") r.then(() => renderHeader()).catch(() => {});
+  else renderHeader();
+}
+
 // ---------- sidebar ----------
 
 function renderRulesets() {
   const ul = $("#rulesets");
-  ul.replaceChildren(
+  ul.replaceChildren(...kids(
     ...state.rulesets.map((r) =>
       h(
         "li",
         {
-          class: state.selected && state.selected.id === r.id ? "selected" : "",
+          // confronto su ID e nome: un set appena importato puo' arrivare dal backend
+          // con id non numerico (mock, bridge web) ma con lo stesso nome della riga; la
+          // selezione deve evidenziare comunque la voce che stai guardando.
+          class: state.selectedId != null && state.selectedId === r.id ? "selected" : "",
           onclick: () => selectRuleset(r.id),
         },
         h("div", { class: "name" }, r.name, r.active ? h("span", { class: "pill ok" }, "applicato") : null),
         h("div", { class: "meta" }, `${r.enabled}/${r.rules} regole abilitate`)
       )
     )
-  );
+  ));
 }
 
 async function loadRulesets() {
   state.rulesets = await call("list_rulesets");
   renderRulesets();
+  renderNav();
 }
 
 async function selectRuleset(id) {
-  state.selected = await call("get_ruleset", { id });
+  const rs = await call("get_ruleset", { id });
+  // il dettaglio puo' riportare l'id in una forma diversa da quella della lista (il
+  // DB restituisce numeri, un bridge web potrebbe serializzarli): la selezione in
+  // sidebar si fa sul nome quando gli id non coincidono, cosi' la voce evidenziata e'
+  // sempre il set che stai guardando.
+  const row = state.rulesets.find((r) => r.id === (rs?.id ?? id)) ||
+    state.rulesets.find((r) => r.name === rs?.name);
+  state.selectedId = row ? row.id : id;
+  state.selected = rs;
+  if (state.view !== "firewall") return setView("firewall");
   renderRulesets();
   renderDetail();
+  renderHeader();
 }
 
 async function refreshSelected() {
   await loadRulesets();
-  if (state.selected) await selectRuleset(state.selected.id);
+  if (state.selected) await selectRuleset(state.selectedId ?? state.selected.id);
 }
 
 // ---------- dettaglio set ----------
 
 function renderDetail() {
+  if (state.view !== "firewall") return; // la vista #view ospita la pagina attiva
   const rs = state.selected;
-  const box = $("#detail");
+  const box = $("#view");
   if (!rs) {
-    box.replaceChildren(
+    box.replaceChildren(...kids(
       h("div", { class: "empty" }, "Seleziona un set o creane uno nuovo.", h("br"),
         "Per partire dalle regole attuali usa ", h("b", {}, "Importa da UFW"), ".")
-    );
+    ));
     return;
   }
 
   const head = h(
     "div",
-    { class: "detail-head" },
+    { class: "view-head" },
     h(
       "div",
       { class: "title" },
@@ -614,7 +1077,7 @@ function renderDetail() {
   } else {
     body = h(
       "table",
-      { class: "rules" },
+      { class: "rules plain" },
       h(
         "thead",
         {},
@@ -663,14 +1126,14 @@ function renderDetail() {
     );
   }
 
-  box.replaceChildren(
+  box.replaceChildren(...kids(
     head,
     body,
     h("p", { class: "hint" },
       "L'ordine conta: UFW applica la prima regola che corrisponde. ",
       "Le regole disabilitate restano nel set ma non vengono scritte in UFW. ",
       "Le modifiche diventano effettive solo con «Anteprima e applica».")
-  );
+  ));
 }
 
 async function move(rule, delta) {
@@ -689,12 +1152,14 @@ async function deleteRule(rule) {
 
 let editingRule = null;
 
-function editRule(rule) {
+/** `prefill` (solo per una regola nuova) sovrascrive i valori di partenza: lo usa il Report. */
+function editRule(rule, prefill = null) {
   editingRule = rule;
   const f = $("#rule-form");
   const s = rule || {
     enabled: true, action: "allow", direction: "in", interface: "", proto: "tcp",
     src: "any", sport: "", dst: "any", dport: "", log: "off", comment: "",
+    ...(prefill || {}),
   };
   $("#rule-title").textContent = rule ? "Modifica regola" : "Nuova regola";
   for (const k of ["action", "direction", "interface", "proto", "src", "sport", "dst", "dport", "log", "comment"]) {
@@ -702,8 +1167,7 @@ function editRule(rule) {
   }
   f.elements.enabled.checked = rule ? rule.enabled : true;
   $("#rule-error").hidden = true;
-  $("#dlg-rule").showModal();
-  f.elements.src.focus();
+  showPanel("panel-rule", "input[name=src]");
 }
 
 $("#rule-form").addEventListener("submit", async (ev) => {
@@ -733,7 +1197,7 @@ $("#rule-form").addEventListener("submit", async (ev) => {
     err.hidden = false;
     return;
   }
-  $("#dlg-rule").close();
+  closePanel();
   await refreshSelected();
 });
 
@@ -750,21 +1214,20 @@ function setDialog(title, name, description, save) {
     ev.preventDefault();
     try {
       await save(f.elements.name.value, f.elements.description.value);
-      $("#dlg-set").close();
+      closePanel();
     } catch (e) {
       $("#set-error").textContent = String(e);
       $("#set-error").hidden = false;
     }
   };
-  $("#dlg-set").showModal();
-  f.elements.name.focus();
+  showPanel("panel-set", "input[name=name]");
 }
 
 function newSet() {
   setDialog("Nuovo set di regole", "", "", async (name, description) => {
     const id = await invoke("create_ruleset", { name, description, copyFrom: null });
-    await loadRulesets();
     await selectRuleset(id);
+    await loadRulesets();
   });
 }
 
@@ -780,8 +1243,8 @@ function duplicateSet() {
   const rs = state.selected;
   setDialog("Duplica set", `${rs.name} (copia)`, rs.description, async (name, description) => {
     const id = await invoke("create_ruleset", { name, description, copyFrom: rs.id });
-    await loadRulesets();
     await selectRuleset(id);
+    await loadRulesets();
   });
 }
 
@@ -797,10 +1260,165 @@ async function deleteSet() {
   renderDetail();
 }
 
+// Import di un set da file JSONC. Il parsing e la validazione stanno nel backend
+// (pyla_core::import): qui si raccoglie il testo e si mostrano gli esiti, inclusi i
+// motivi di scarto con la riga del file, che sennò resterebbero invisibili.
+// Un modello di file reale sta in examples/stealth.jsonc (nel pacchetto:
+// /usr/share/doc/pyla/examples); i profili pubblici si caricano da pyla-dev/pyla-profiles.
+function importDialog() {
+  const f = $("#import-form");
+  $("#import-error").hidden = true;
+  $("#import-text").value = "";
+  $("#import-file").value = "";
+  // l'elenco dei profili resta (e' in cache): si toglie solo la selezione precedente
+  for (const r of document.querySelectorAll("#import-list tbody tr")) r.setAttribute("aria-selected", "false");
+  f.onsubmit = async (ev) => {
+    ev.preventDefault();
+    const text = $("#import-text").value;
+    if (!text.trim()) {
+      $("#import-error").textContent = tr("Incolla il contenuto del file o scegli un file.");
+      $("#import-error").hidden = false;
+      return;
+    }
+    // nome di riserva = nome del file scelto (senza estensione), poi "Set importato"
+    const file = $("#import-file").files[0];
+    const fromList = window.__pylaImportFallback;
+    window.__pylaImportFallback = null;
+    const fallback = file ? file.name.replace(/\.(jsonc?|json)$/i, "")
+      : (fromList || "Set importato");
+    const submit = f.querySelector("button[type=submit]");
+    submit.disabled = true;
+    try {
+      const out = await call("import_file", { text, fallbackName: fallback });
+      closePanel();
+      // prima si seleziona, POI si ricarica la lista: loadRulesets() richiama
+      // renderNav(), che in questo build riscrive anche le voci della sidebar e
+      // cancellerebbe l'evidenziazione del set appena importato.
+      await selectRuleset(out.id);
+      await loadRulesets();
+      // conteggio onesto: quante regole attive e quante disabilitate dal file
+      // conteggio onesto: quante regole attive e quante disabilitate dal file
+      const bits = [`${out.rules} regole`];
+      if (out.disabled) bits.push(`${out.disabled} disabilitate`);
+      toast(tr(`Set «${out.name}» importato (${bits.join(", ")})`));
+    } catch (e) {
+      // l'errore del parser arriva gia' con la riga: "regola 7 (riga 12): ..."
+      $("#import-error").textContent = String(e);
+      $("#import-error").hidden = false;
+    } finally {
+      submit.disabled = false;
+    }
+  };
+  showPanel("panel-import", "#import-text");
+}
+
+// file scelto -> lo leggiamo qui e lo mettiamo nella textarea: l'utente vede cosa
+// sta importando prima di confermare, e un file grande resta verificabile
+function bindImportFileInput() {
+  // il pannello di import mostra sempre i profili pubblici: si caricano all'apertura
+  $("#btn-import-file").addEventListener("click", () => { importDialog(); loadProfiles(); });
+  // Profili pubblici: il repository GitHub pyla-dev/pyla-profiles, uno per cartella
+  // (profiles/<id>/profile.jsonc). Il backend compone l'indirizzo dall'id, quindi da qui
+  // non si puo' far scaricare altro. L'elenco si chiede solo quando l'utente lo apre.
+  // Rischio dal README del profilo ("hard", "medium (balanced for daily use)"): la prima
+  // parola diventa una pill colorata come la priorita' delle CVE, il resto va sotto.
+  const RISK_CLASS = { critical: "prio-critical", hard: "prio-high", high: "prio-high",
+    medium: "prio-medium", low: "prio-low", easy: "prio-low" };
+  function riskCell(risk) {
+    const m = /^(\S+)\s*(.*)$/.exec(risk || "");
+    if (!m) return h("span", { class: "chain-meta" }, "—");
+    return [h("span", { class: `pill ${RISK_CLASS[m[1].toLowerCase()] || "prio-low"}` }, m[1]),
+      m[2] ? h("span", { class: "chain-meta" }, m[2]) : null];
+  }
+
+  // Elenco in cache per la sessione: GitHub si interroga alla prima apertura del
+  // pannello (o alla successiva, se quella volta la rete non ha risposto).
+  let profilesCache = null;
+  async function loadProfiles() {
+    const list = $("#import-list");
+    const note = $("#import-files-note");
+    if (profilesCache && list.querySelector("tbody")) return;
+    list.replaceChildren();
+    list.hidden = true;
+    note.textContent = tr("Lettura dei profili da GitHub…");
+    note.hidden = false;
+    let profiles;
+    try {
+      profiles = profilesCache ?? await call("list_profiles");
+    } catch (e) {
+      note.textContent = tr(`Elenco dei profili non disponibile: ${e}`);
+      return;
+    }
+    profilesCache = profiles;
+    if (!profiles?.length) {
+      note.textContent = tr("Nessun profilo nel repository.");
+      return;
+    }
+    note.hidden = true;
+    list.appendChild(h("table", { class: "rules cve profiles" },
+      h("thead", {}, h("tr", {}, h("th", {}, "Nome"), h("th", {}, "Target"), h("th", {}, "Rischio"))),
+      h("tbody", {}, profiles.map((p) =>
+        h("tr", { role: "option", "aria-selected": "false", "data-id": p.id, onclick: () => pickProfile(p.id) },
+          h("td", { class: "p-name" }, h("strong", {}, p.name || p.id),
+            h("span", { class: "chain-meta mono" }, `${p.id} · ${Math.max(1, Math.round((p.size || 0) / 1024))} KB`)),
+          h("td", {}, p.target || h("span", { class: "chain-meta" }, "—")),
+          h("td", { class: "p-risk" }, riskCell(p.risk)))))));
+    list.hidden = false;
+  }
+
+  // scelta di un profilo: il backend lo scarica e il testo va nella textarea, dove
+  // l'utente lo vede (e puo' ancora correggerlo) prima di importarlo.
+  async function pickProfile(id) {
+    const rows = [...$("#import-list").querySelectorAll("tbody tr")];
+    for (const r of rows) r.setAttribute("aria-selected", String(r.dataset.id === id));
+    rows.find((r) => r.dataset.id === id)?.scrollIntoView?.({ block: "nearest" });
+    try {
+      const text = await call("read_profile", { id });
+      $("#import-text").value = text;
+      // l'id del profilo diventa il nome di riserva del set se nel JSONC non c'e' "name"
+      $("#import-file").value = "";
+      window.__pylaImportFallback = id;
+      $("#import-error").hidden = true;
+    } catch (e) {
+      $("#import-error").textContent = tr(`Profilo non scaricabile: ${e}`);
+      $("#import-error").hidden = false;
+    }
+  }
+
+  // tastiera sul listbox: frecce per spostarsi tra i profili (e caricarli)
+  $("#import-list").addEventListener("keydown", (ev) => {
+    if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
+    const rows = [...$("#import-list").querySelectorAll("tbody tr")];
+    if (!rows.length) return;
+    ev.preventDefault();
+    const cur = rows.findIndex((r) => r.getAttribute("aria-selected") === "true");
+    const next = cur < 0 ? 0 : Math.min(rows.length - 1, Math.max(0, cur + (ev.key === "ArrowDown" ? 1 : -1)));
+    pickProfile(rows[next].dataset.id);
+  });
+
+  $("#import-file").addEventListener("change", async () => {
+    const file = $("#import-file").files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      $("#import-error").textContent = tr("File troppo grande (oltre 2 MB).");
+      $("#import-error").hidden = false;
+      return;
+    }
+    try {
+      $("#import-text").value = await file.text();
+      $("#import-error").hidden = true;
+    } catch (e) {
+      $("#import-error").textContent = tr(`Lettura del file fallita: ${e}`);
+      $("#import-error").hidden = false;
+    }
+  });
+}
+
 async function importLive(button) {
   const name = `UFW ${new Date().toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}`;
   await busy(button, "Autenticazione…", async () => {
     const id = await call("import_live", { name });
+    invalidateReadViews();
     await loadRulesets();
     await selectRuleset(id);
     toast("Regole importate da UFW");
@@ -810,33 +1428,35 @@ async function importLive(button) {
 // ---------- dialog generico ----------
 
 function infoDialog(content, buttons) {
-  $("#info-body").replaceChildren(...[content].flat());
-  $("#info-actions").replaceChildren(...buttons);
-  const dlg = $("#dlg-info");
-  if (!dlg.open) dlg.showModal();
+  $("#info-body").replaceChildren(...kids(...[content].flat()));
+  $("#info-actions").replaceChildren(...kids(...buttons));
+  showPanel("panel-info", "#info-actions button");
 }
 
 function confirmDialog(title, text, okLabel = "Conferma", okClass = "primary") {
   return new Promise((resolve) => {
-    const dlg = $("#dlg-info");
+    // il pannello non ha l'evento "close" del dialog: la promessa si risolve per per-
+    // verso. Esc e Annulla passano da qui (data-cancel), altrimenti una conferma chiusa
+    // con Esc lascerebbe il pannello aperto sopra una scelta non fatta.
     const done = (v) => {
-      dlg.removeEventListener("close", onClose);
-      dlg.close();
+      panelCancel = null;
+      closePanel();
       resolve(v);
     };
-    const onClose = () => resolve(false);
-    dlg.addEventListener("close", onClose, { once: true });
+    panelCancel = () => done(false);
     infoDialog(
       [h("h3", {}, title), text ? h("p", {}, text) : null],
       [
-        h("button", { class: "ghost", onclick: () => done(false) }, "Annulla"),
+        h("button", { class: "ghost", "data-cancel": "", onclick: () => done(false) }, "Annulla"),
         h("button", { class: okClass, onclick: () => done(true) }, okLabel),
       ]
     );
   });
 }
 
-const closeButton = () => h("button", { onclick: () => $("#dlg-info").close() }, "Chiudi");
+
+
+const closeButton = () => h("button", { "data-cancel": "", onclick: () => closePanel() }, "Chiudi");
 
 // ---------- anteprima e applicazione ----------
 
@@ -863,6 +1483,7 @@ async function previewApply(button) {
     if (!rs.active) {
       // allineato ma non segnato come attivo: lo segna applicando (no-op lato UFW)
       await call("apply", { rulesetId: rs.id });
+      invalidateReadViews();
       await refreshSelected();
     }
     return;
@@ -891,7 +1512,7 @@ async function previewApply(button) {
   );
 
   infoDialog(parts, [
-    h("button", { class: "ghost", onclick: () => $("#dlg-info").close() }, "Annulla"),
+    h("button", { class: "ghost", "data-cancel": "", onclick: () => closePanel() }, "Annulla"),
     h("button", { class: "primary", onclick: (ev) => doApply(ev.currentTarget, rs) }, "Applica"),
   ]);
 }
@@ -904,8 +1525,10 @@ async function doApply(button, rs) {
     return;
   }
   showReport(report);
+  invalidateReadViews();
   await loadStatus();
   await refreshSelected();
+  renderHeader();
 }
 
 function showReport(report) {
@@ -927,13 +1550,42 @@ function showReport(report) {
 
 // ---------- stato reale, comandi, storico ----------
 
-async function showLive(button) {
-  const st = await busy(button, "Autenticazione…", () => call("live_status"));
-  state.status = { ...st, rules: null };
-  renderStatus();
-  const rules = st.rules || [];
+const liveView = { rules: null, loading: false, error: null };
+
+/** Vista "Stato UFW": le regole utente presenti ora in UFW (era un dialog). */
+async function viewLive() {
+  const box = $("#view");
+  if (liveView.rules === null && !liveView.loading) {
+    box.replaceChildren(h("p", { class: "hint" },
+      "Lettura delle regole attuali di UFW\u2026 ", "Pu\u00f2 chiedere l'autenticazione."));
+    liveView.loading = true;
+    try {
+      const st = await call("live_status");
+      state.status = { ...st, rules: null };
+      renderStatus();
+      liveView.rules = st.rules || [];
+      liveView.status = st;
+      liveView.error = null;
+    } catch (e) {
+      liveView.error = String(e);
+    } finally {
+      liveView.loading = false;
+    }
+    if (state.view !== "live") return;
+    renderHeader();
+  }
+  if (liveView.error) {
+    box.replaceChildren(...kids(
+      h("p", { class: "error" }, liveView.error),
+      h("p", {}, h("button", { class: "ghost", onclick: () => { liveView.rules = null; liveView.error = null; viewLive(); } }, "Riprova"))
+    ));
+    return;
+  }
+  if (liveView.rules === null) return; // caricamento in corso su un'altra vista
+  const st = liveView.status;
+  const rules = liveView.rules;
   const parts = [
-    h("h3", {}, "Regole presenti ora in UFW"),
+    h("h3", {}, "Regole utente presenti ora in UFW"),
     h("dl", { class: "kv" },
       h("dt", {}, "Stato"), h("dd", {}, st.enabled ? "attivo" : "disattivato"),
       h("dt", {}, "Policy"), h("dd", {}, `entrata ${st.defaults.incoming}, uscita ${st.defaults.outgoing}, inoltro ${st.defaults.routed}`),
@@ -943,7 +1595,7 @@ async function showLive(button) {
     parts.push(h("p", {}, "Nessuna regola utente."));
   } else {
     parts.push(
-      h("table", { class: "rules" },
+      h("table", { class: "rules plain" },
         h("thead", {}, h("tr", {}, h("th", {}, "#"), h("th", {}, "Azione"), h("th", {}, "Dir."), h("th", {}, "Interfaccia"),
           h("th", {}, "Proto"), h("th", {}, "Sorgente"), h("th", {}, "Destinazione"), h("th", {}, "Commento"))),
         h("tbody", {},
@@ -957,7 +1609,7 @@ async function showLive(button) {
   }
   parts.push(h("p", { class: "hint" },
     "Sono solo le regole utente di UFW. Le regole di before.rules, Docker e libvirt non compaiono qui."));
-  infoDialog(parts, [closeButton()]);
+  box.replaceChildren(...kids(...parts));
 }
 
 async function showCommands() {
@@ -981,9 +1633,28 @@ async function showCommands() {
   );
 }
 
-async function showHistory() {
-  const rows = await call("history", { limit: 50 });
-  const parts = [h("h3", {}, "Storico applicazioni")];
+const historyView = { rows: null, loading: false };
+
+/** Vista "Storico": le applicazioni passate con esito e dettagli (era un dialog). */
+async function viewHistory() {
+  const box = $("#view");
+  if (historyView.rows === null && !historyView.loading) {
+    historyView.loading = true;
+    try {
+      historyView.rows = await call("history", { limit: 50 });
+    } catch (e) {
+      historyView.rows = [];
+      historyView.error = String(e);
+    } finally {
+      historyView.loading = false;
+    }
+    if (state.view !== "history") return;
+    renderNav();
+    renderHeader();
+  }
+  const rows = historyView.rows || [];
+  const parts = [h("h3", {}, `${rows.length} applicazioni registrate`)];
+  if (historyView.error) parts.push(h("p", { class: "error" }, historyView.error));
   if (!rows.length) parts.push(h("p", {}, "Nessuna applicazione registrata."));
   else
     parts.push(
@@ -999,7 +1670,149 @@ async function showHistory() {
               h("td", { class: "ctl" }, h("button", { class: "icon", onclick: () => showReport(r.report) }, "dettagli"))
             ))))
     );
-  infoDialog(parts, [closeButton()]);
+  box.replaceChildren(...kids(...parts));
+}
+
+// ---------- report: servizi in ascolto (come la scheda Report di Gufw) ----------
+
+const reportView = {
+  data: null, loading: false, error: null, filter: "",
+  hideLocal: localStorage.getItem("pyla.report.hideLocal") === "1",
+};
+
+const SCOPE_PILL = { locale: "muted", tutte: "warn", "link-local": "muted", indirizzo: "" };
+// etichette proprie: "tutte"/"locale" da sole sono gia' usate altrove nel dizionario EN
+const SCOPE_LABEL = { locale: "solo locale", tutte: "tutte le interfacce", "link-local": "link-local", indirizzo: "un indirizzo" };
+
+function reportReload(privileged) {
+  reportView.data = null;
+  reportView.error = null;
+  if (state.view === "report") { $("#view").replaceChildren(); return viewReport(privileged); }
+}
+
+/** Vista "Report": legge /proc senza password; `privileged` passa dall'helper (root). */
+async function viewReport(privileged = false) {
+  const box = $("#view");
+  if (reportView.data === null && !reportView.loading) {
+    box.replaceChildren(h("p", { class: "hint" }, "Lettura delle porte in ascolto\u2026",
+      privileged ? " Pu\u00f2 chiedere l'autenticazione." : ""));
+    reportView.loading = true;
+    try {
+      reportView.data = await call("listening_report", { privileged });
+      reportView.error = null;
+    } catch (e) {
+      reportView.error = String(e);
+      // l'autenticazione annullata non deve far sparire l'elenco gia' leggibile senza root
+      if (privileged) {
+        try { reportView.data = await invoke("listening_report", { privileged: false }); } catch (_) { /* resta l'errore */ }
+      }
+    } finally {
+      reportView.loading = false;
+    }
+    if (state.view !== "report") return;
+    renderNav();
+    renderHeader();
+  }
+  if (!reportView.data) {
+    box.replaceChildren(...kids(
+      reportView.error ? h("p", { class: "error" }, reportView.error) : null,
+      h("p", {}, h("button", { class: "ghost", onclick: () => reportReload(false) }, "Riprova"))
+    ));
+    return;
+  }
+  const d = reportView.data;
+  const parts = [
+    h("p", { class: "hint" },
+      "Servizi che accettano connessioni TCP o datagrammi UDP su questa macchina. ",
+      "Quelli in ascolto solo su loopback (locale) non sono raggiungibili dalla rete. ",
+      "Con ", h("b", { class: "nowrap" }, "+ Regola"), " crei una regola allow per la porta nel set selezionato."),
+    reportView.error ? h("p", { class: "error" }, reportView.error) : null,
+    h("div", { class: "nft-toolbar" },
+      h("input", {
+        type: "search", placeholder: "Filtra (es. 22, udp, sshd, root)",
+        value: reportView.filter,
+        oninput: (ev) => { reportView.filter = ev.target.value; renderReportBody(); },
+      }),
+      h("label", { class: "inline" },
+        h("input", {
+          type: "checkbox", checked: reportView.hideLocal,
+          onchange: (ev) => {
+            reportView.hideLocal = ev.target.checked;
+            try { localStorage.setItem("pyla.report.hideLocal", ev.target.checked ? "1" : "0"); } catch (_) {}
+            renderReportBody();
+          },
+        }),
+        " nascondi quelle solo locali")),
+    h("div", { id: "report-body" }),
+  ];
+  if (!d.privileged && d.unresolved > 0)
+    parts.push(h("p", { class: "hint" },
+      d.unresolved === 1
+        ? "1 porta appartiene a un processo di un altro utente (servizio di sistema): "
+        : `${d.unresolved} porte appartengono a processi di altri utenti (servizi di sistema): `,
+      "il nome compare con Mostra tutti i processi, che li legge come root."));
+  box.replaceChildren(...kids(...parts));
+  renderReportBody();
+}
+
+// stesse etichette della testata: su telefono la tabella diventa a schede (data-label)
+const REPORT_COLS = ["Protocollo", "Porta", "Indirizzo", "Ascolto", "Processo", "Utente", ""];
+function withLabels(cols, row) {
+  [...row.children].forEach((td, i) => cols[i] && td.setAttribute("data-label", tr(cols[i])));
+  return row;
+}
+
+function renderReportBody() {
+  const box = $("#report-body");
+  if (!box || !reportView.data) return;
+  const q = reportView.filter.trim().toLowerCase();
+  const rows = reportView.data.sockets.filter((x) => {
+    if (reportView.hideLocal && x.scope === "locale") return false;
+    if (!q) return true;
+    return [x.proto, String(x.port), x.addr, x.process || "", x.user || "", x.cmdline || ""]
+      .some((v) => v.toLowerCase().includes(q));
+  });
+  if (!rows.length) {
+    box.replaceChildren(h("p", {}, reportView.data.sockets.length
+      ? "Nessuna porta corrisponde al filtro." : "Nessuna porta in ascolto."));
+    return;
+  }
+  box.replaceChildren(
+    h("table", { class: "rules plain report" },
+      h("thead", {}, h("tr", {},
+        h("th", {}, "Protocollo"), h("th", {}, "Porta"), h("th", {}, "Indirizzo"), h("th", {}, "Ascolto"),
+        h("th", {}, "Processo"), h("th", {}, "Utente"), h("th", {}, ""))),
+      h("tbody", {}, rows.map((x) =>
+        withLabels(REPORT_COLS, h("tr", { class: x.scope === "locale" ? "dim" : "" },
+          h("td", { class: "mono" }, `${x.proto}${x.family === 6 ? "6" : ""}`),
+          h("td", { class: "mono" }, x.port),
+          h("td", { class: "mono" }, x.addr),
+          h("td", {}, h("span", { class: `pill ${SCOPE_PILL[x.scope] ?? ""}` }, SCOPE_LABEL[x.scope] ?? x.scope)),
+          h("td", { title: x.cmdline || "" },
+            x.process ? [x.process, x.pid ? h("span", { class: "chain-meta" }, ` pid ${x.pid}`) : null] : "\u2014"),
+          h("td", {}, x.user || String(x.uid)),
+          h("td", { class: "ctl" },
+            h("button", {
+              class: "icon", title: "Crea una regola allow per questa porta nel set selezionato",
+              onclick: () => ruleFromReport(x),
+            }, "+ Regola"))))
+      )))
+  );
+}
+
+/** "+ Regola": apre l'editor nel set selezionato (o in quello applicato), gia' compilato. */
+async function ruleFromReport(x) {
+  const target = state.selected ||
+    state.rulesets.find((r) => r.active) || state.rulesets[0];
+  if (!target) {
+    toast("Crea prima un set di regole nella pagina Firewall.", true);
+    return;
+  }
+  await selectRuleset(target.id);
+  editRule(null, {
+    action: "allow", direction: "in", proto: x.proto, dport: String(x.port),
+    comment: x.process || "",
+  });
 }
 
 async function toggleFirewall(button) {
@@ -1015,6 +1828,7 @@ async function toggleFirewall(button) {
   }
   const st = await busy(button, "Autenticazione…", () => call("set_firewall", { enabled: on }));
   state.status = { ...st, rules: null };
+  invalidateReadViews();
   renderStatus();
   toast(on ? "Firewall attivato" : "Firewall disattivato");
 }
@@ -1117,19 +1931,33 @@ function renderNftBody() {
       )
     );
   }
-  box.replaceChildren(...(tables.length ? tables : [h("p", { class: "hint" }, "Nessuna corrispondenza.")]));
+  box.replaceChildren(...kids(...(tables.length ? tables : [h("p", { class: "hint" }, "Nessuna corrispondenza.")])));
 }
 
-async function showRuleset(button) {
-  nftView.data = await busy(button, "Autenticazione…", () => call("full_ruleset"));
+/** Vista "Ruleset completo": tabelle e catene del kernel, in sola lettura (era un dialog). */
+async function viewNft() {
+  const box = $("#view");
+  if (!nftView.data) {
+    box.replaceChildren(h("p", { class: "hint" },
+      "Lettura del ruleset del kernel\u2026 ", "Pu\u00f2 chiedere l'autenticazione."));
+    try {
+      nftView.data = await call("full_ruleset");
+    } catch (e) {
+      box.replaceChildren(...kids(
+        h("p", { class: "error" }, String(e)),
+        h("p", {}, h("button", { class: "ghost", onclick: () => viewNft() }, "Riprova"))
+      ));
+      return;
+    }
+    if (state.view !== "nft") return;
+    renderHeader();
+  }
   const owners = ["", "ufw", "docker", "libvirt", "kernel"];
-  infoDialog(
-    [
-      h("h3", {}, "Ruleset completo del kernel"),
-      h("p", { class: "hint" },
-        "Sola lettura: tutto ciò che il firewall applica, incluse le regole di before.rules, Docker e libvirt. ",
-        "I contatori partono dall'ultimo caricamento delle regole. Le righe grigie non hanno mai trovato pacchetti."),
-      h("div", { class: "nft-toolbar" },
+  box.replaceChildren(...kids(
+    h("p", { class: "hint" },
+      "Sola lettura: tutto ciò che il firewall applica, incluse le regole di before.rules, Docker e libvirt. ",
+      "I contatori partono dall'ultimo caricamento delle regole. Le righe grigie non hanno mai trovato pacchetti."),
+    h("div", { class: "nft-toolbar" },
         h("input", {
           type: "search", placeholder: "Filtra (es. 192.0.2.6, dport 22, docker)",
           value: nftView.filter,
@@ -1141,20 +1969,31 @@ async function showRuleset(button) {
           h("input", { type: "checkbox", checked: nftView.hideEmpty, onchange: (ev) => { nftView.hideEmpty = ev.target.checked; renderNftBody(); } }),
           " nascondi catene vuote")
       ),
-      h("div", { id: "nft-body", class: "nft-body" }),
-    ],
-    [
-      h("button", { class: "ghost", onclick: (ev) => showRuleset(ev.currentTarget) }, "Aggiorna"),
-      h("button", { class: "ghost", onclick: async () => { await navigator.clipboard.writeText(nftView.data.text); toast("Copiato"); } }, "Copia testo"),
-      closeButton(),
-    ]
-  );
+    h("div", { id: "nft-body", class: "nft-body" })
+  ));
   renderNftBody();
 }
 
 // ---------- CVE (Ubuntu Security API) ----------
 
-const cveView = { watch: null, page: null, items: [], filter: "", loading: false, mit: null, sort: null, tab: "ubuntu" };
+const cveView = { watch: null, page: null, items: [], filter: "", loading: false, mit: null, sort: null, tab: "ubuntu",
+  // "nascondi corrette": on di default. Su questa macchina 407 CVE in cache su 415 sono gia'
+  // corrette o non pertinenti: senza il flag l'elenco utile e' sepolto. Persiste come la lingua
+  // (localStorage, non DB: e' una preferenza di visualizzazione, non un dato del firewall).
+  // Vale solo per l'elenco Ubuntu: nella scheda "Seguite" una CVE corretta e' informazione
+  // cercata (la stavi seguendo perche' ti riguardava), quindi li non si nasconde niente.
+  hideResolved: localStorage.getItem("pyla.cve.hideResolved") !== "0" };
+
+/** CVE "a posto": gia' corretta sul kernel installato o mai pertinente.
+ *  "update" (corretta upstream, pacchetto da aggiornare) NON conta: serve un'azione. */
+function cveResolved(c) {
+  return c.verdict === "fixed" || c.verdict === "not-affected";
+}
+
+function cveHideResolvedSet(on) {
+  cveView.hideResolved = on;
+  localStorage.setItem("pyla.cve.hideResolved", on ? "1" : "0");
+}
 
 const MIT_STATE = {
   mitigata: ["ok", "mitigata"],
@@ -1208,7 +2047,7 @@ async function exposureRun(button) {
     cveView.expoError = String(e);
   }
   cveView.expoLoading = false;
-  await showCve($("#btn-cve"), true);
+  await cveRefresh(true);
 }
 
 function mitBox(c) {
@@ -1256,13 +2095,13 @@ async function mitigateAsk(k, on, button) {
     on ? `${k.impact} La mitigazione resta attiva dopo il riavvio finché non la annulli. Serve l'autenticazione.`
        : "Il sottosistema torna disponibile. Serve l'autenticazione.",
     on ? "Mitiga" : "Annulla mitigazione", on ? "primary" : "danger");
-  if (!ok) return showCve($("#btn-cve"), true);
+  if (!ok) return cveRefresh(true);
   let r;
   try {
     r = await call("mitigate", { id: k.id, on });
     cveView.expo = null; // il ruleset è cambiato: i verdetti precedenti non valgono più
   } finally {
-    await showCve($("#btn-cve"), true);
+    await cveRefresh(true);
   }
   toast(r.message, !r.ok);
 }
@@ -1288,6 +2127,97 @@ function statusText(c, sys) {
   return `${sys.package} su ${sys.release}: ${c.status}${fix} (installata ${sys.version || "?"})`;
 }
 
+/**
+ * Nota di mitigazione Ubuntu: il testo arriva dall'advisory GIA' multilineo
+ * (pallini "- ", passi numerati, blocchi di comandi indentati). In un <p> l'HTML
+ * collassa capolinea e indentazione: diventa un muro di testo illeggibile (era il
+ * caso di CVE-2026-98432). Qui viene spezzato e ricomposto rispettando la
+ * struttura del messaggio, senza riscriverne una parola.
+ */
+const MIT_CMD = /^(sudo|printf|echo|nft|sed|sysctl|ip|apt|dpkg|tee|systemctl|modprobe|rmmod|update-initramfs|install)\b|^\$ /;
+
+/** Pallino "Requires: ...": l'etichetta prima dei due punti va in grassetto. */
+function mitLead(s) {
+  const m = /^([A-Z][A-Za-z ]{2,18}):\s+([\s\S]+)$/.exec(s);
+  return m ? h("li", {}, h("b", {}, m[1] + ":"), " ", m[2]) : h("li", {}, s);
+}
+
+function mitNoteBox(c) {
+  const raw = String(c.mitigation || "").replace(/\r\n/g, "\n").split("\n");
+  while (raw.length && !raw[0].trim()) raw.shift();
+  while (raw.length && !raw[raw.length - 1].trim()) raw.pop();
+  if (!raw.length) return null;
+  // indent comune del blocco (le note Ubuntu sono rientrate nel messaggio): va
+  // rimosso, ma NON l'indentazione relativa, che distingue i comandi dal testo.
+  const base = Math.min(...raw.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length));
+  const body = [];
+  let list = null, lastLi = null, pre = null, preBase = 0, mode = "";
+  // preBase = indent della prima riga del blocco: l'indentazione RELATIVA delle
+  // righe successive si conserva (annidamento printf/nft, continuation "\").
+  const startPre = (line, rel) => { if (!pre) { pre = []; preBase = rel; } pre.push(line.slice(Math.min(preBase, line.match(/^ */)[0].length))); };
+  const flushPre = () => { if (pre) { body.push(h("pre", { class: "mit-cmd" }, pre.join("\n"))); pre = null; preBase = 0; } };
+  const flushList = () => { flushPre(); list = null; lastLi = null; };
+  for (const line0 of raw) {
+    const line = line0.slice(Math.min(base, line0.match(/^ */)[0].length));
+    const text = line.trim();
+    const rel = line.match(/^ */)[0].length;
+    if (!text) { flushList(); mode = ""; continue; }
+    const bullet = /^[-\u2022*]\s+(.*)$/.exec(text);
+    const step = /^(\d+)[.)]\s+(.*)$/.exec(text);
+    if (bullet) {
+      flushPre();
+      if (!list) { list = h("ul", { class: "mit-facts" }); body.push(list); }
+      lastLi = mitLead(bullet[1]); list.append(lastLi); mode = "bullet";
+    } else if (step) {
+      flushList();
+      body.push(h("p", { class: "mit-step" }, h("b", {}, step[1] + ". "), step[2]));
+      mode = "step";
+    } else if (rel >= 2 && mode === "bullet" && lastLi) {
+      lastLi.append(" " + text);                 // continuazione del pallino
+    } else if (rel >= 2 && !/^[A-Z]/.test(text) && (mode === "step" || mode === "pre")) {
+      startPre(line, rel); mode = "pre";     // blocco di comandi
+    } else if (MIT_CMD.test(text)) {
+      flushList(); startPre(line, rel); mode = "pre";
+    } else {
+      flushList(); body.push(h("p", {}, text)); mode = "text";
+    }
+  }
+  flushList();
+  return h("div", { class: "mit-note" },
+    h("div", { class: "mit-note-head" },
+      h("b", {}, "Mitigazione Ubuntu:"),
+      h("span", { class: "spacer" }),
+      h("button", {
+        class: "ghost small", title: "Copia il testo della mitigazione",
+        onclick: async () => { await navigator.clipboard.writeText(c.mitigation); toast("Copiato"); },
+      }, "Copia")),
+    ...body);
+}
+
+/**
+ * Descrizione dell'advisory nello STESSO riquadro e con lo stesso font della nota
+ * di mitigazione: prima era un <pre class="cmds"> monospazio, cioe' un altro tipo
+ * di contenuto rispetto al testo dell'advisory (che e' prosa, wrap a ~75 colonne).
+ * white-space: pre-wrap perche' i capolinea del changelog kernel e le righe
+ * indentate (es. i log KASAN) sono parte del messaggio.
+ */
+function cveDescBox(c) {
+  const text = String(c.description || "").replace(/\r\n/g, "\n").replace(/^\s+|\s+$/g, "");
+  if (!text) return null;
+  return h("details", { class: "mit-note" },
+    h("summary", { class: "mit-note-head" },
+      h("b", {}, "Descrizione completa"),
+      h("span", { class: "spacer" }),
+      h("button", {
+        class: "ghost small", title: "Copia il testo della descrizione",
+        onclick: async (ev) => {
+          ev.preventDefault();               // il click non deve aprire/chiudere il box
+          await navigator.clipboard.writeText(c.description); toast("Copiato");
+        },
+      }, "Copia")),
+    h("div", { class: "mit-text" }, text));
+}
+
 function cveLink(c) {
   return h("a", { href: "#", class: "mono", onclick: (ev) => { ev.preventDefault(); openUrl(c.url); } }, c.id);
 }
@@ -1306,9 +2236,9 @@ function cveCard(c, sys) {
     ),
     h("p", { class: "cve-title" }, c.title),
     h("p", { class: "hint" }, statusText(c, sys)),
-    c.mitigation ? h("p", {}, h("b", {}, "Mitigazione Ubuntu: "), c.mitigation) : null,
+    c.mitigation ? mitNoteBox(c) : null,
     c.verdict === "vulnerable" || c.verdict === "update" ? mitBox(c) : null,
-    h("details", {}, h("summary", {}, "Descrizione completa"), h("pre", { class: "cmds" }, c.description))
+    cveDescBox(c)
   );
 }
 
@@ -1365,26 +2295,33 @@ function renderCveBody() {
   const box = $("#cve-body");
   if (!box) return;
   const w = cveView.watch;
-  $("#cve-tabs").replaceChildren(
+  $("#cve-tabs").replaceChildren(...kids(
     h("button", { class: `cve-tab${cveView.tab === "ubuntu" ? " active" : ""}`, onclick: () => cveTabSet("ubuntu") },
       "Vulnerabilità Ubuntu"),
     h("button", { class: `cve-tab${cveView.tab === "seguite" ? " active" : ""}`, onclick: () => cveTabSet("seguite") },
       "Seguite", w ? h("span", { class: "pill muted" }, String(w.items.length)) : null)
-  );
+  ));
   const ctl = $("#cve-ctl");
   if (cveView.tab === "ubuntu") {
-    ctl.replaceChildren(h("input", {
+    const hideBox = h("input", {
+      type: "checkbox",
+      checked: cveView.hideResolved,
+      onchange: (ev) => { cveHideResolvedSet(ev.target.checked); renderCveList(); },
+    });
+    ctl.replaceChildren(...kids(h("input", {
       type: "search", class: "cve-filter", placeholder: "Filtra elenco (es. tcp, mptcp, sctp)",
       value: cveView.filter,
       oninput: (ev) => { cveView.filter = ev.target.value; renderCveList(); },
-    }));
+    }),
+    h("label", { class: "inline", title: "Le CVE gia' corrette sul kernel installato o non pertinenti restano fuori dall'elenco; il contatore sopra dice quante ne sono nascoste." },
+      hideBox, " nascondi corrette")));
   } else {
     const addInput = h("input", {
       type: "search", class: "cve-id-input", placeholder: "CVE-AAAA-NNNNN", autocomplete: "off",
       onkeydown: (ev) => { if (ev.key === "Enter" && addInput.value.trim()) cveWatch(addInput.value, true); },
     });
-    ctl.replaceChildren(addInput,
-      h("button", { class: "ghost", onclick: () => addInput.value.trim() && cveWatch(addInput.value, true) }, "Segui CVE"));
+    ctl.replaceChildren(...kids(addInput,
+      h("button", { class: "ghost", onclick: () => addInput.value.trim() && cveWatch(addInput.value, true) }, "Segui CVE")));
   }
   renderCveList();
 }
@@ -1398,31 +2335,35 @@ function renderCveList() {
   if (cveView.tab === "seguite") {
     sub.replaceChildren();
     if (!w) {
-      box.replaceChildren(h("p", { class: "hint" }, "Caricamento…"));
+      box.replaceChildren(...kids(h("p", { class: "hint" }, "Caricamento…")));
       return;
     }
-    box.replaceChildren(...(w.items.length
+    box.replaceChildren(...kids(...(w.items.length
       ? w.items.map((c) => cveCard(c, w.system))
-      : [h("p", { class: "hint" }, "Nessuna CVE seguita.")]));
+      : [h("p", { class: "hint" }, "Nessuna CVE seguita.")])));
     return;
   }
   if (!cveView.page) {
     sub.replaceChildren();
-    box.replaceChildren(h("p", { class: "hint" }, "Caricamento dalla cache locale…"));
+    box.replaceChildren(...kids(h("p", { class: "hint" }, "Caricamento dalla cache locale…")));
     return;
   }
   const sys = cveView.page.system;
-  sub.replaceChildren(
+  const q = cveView.filter.toLowerCase();
+  const matching = cveView.items.filter((c) => !q || `${c.id} ${c.title} ${c.description}`.toLowerCase().includes(q));
+  // il flag si applica dopo la ricerca: il contatore deve dire quante ne nasconde A TE, ora
+  const hidden = cveView.hideResolved ? matching.filter(cveResolved).length : 0;
+  const rows = cveSort(cveView.hideResolved ? matching.filter((c) => !cveResolved(c)) : matching);
+  sub.replaceChildren(...kids(
     h("h4", {}, `Kernel ${sys.kernel}: CVE aperte high/critical su ${sys.release} `,
       h("span", { class: "chain-meta" }, `${cveView.items.length} di ${cveView.page.total}`,
+        hidden ? ` · ${hidden} corrette nascoste` : "",
         cveView.page.updated_at
           ? h("span", { class: "chain-meta" }, ` · dati ubuntu.com del ${new Date(cveView.page.updated_at * 1000).toLocaleString()}`)
           : null))
-  );
-  const q = cveView.filter.toLowerCase();
-  const rows = cveSort(cveView.items.filter((c) => !q || `${c.id} ${c.title} ${c.description}`.toLowerCase().includes(q)));
+  ));
   const watched = new Set((w?.items || []).map((c) => c.id));
-  box.replaceChildren(
+  box.replaceChildren(...kids(
     h("table", { class: "rules cve" },
       h("thead", {}, h("tr", {}, thCve("id", "CVE"), thCve("prio", "Priorità"), thCve("stato", "Stato"),
         thCve("fix", "Correzione"), thCve("title", "Titolo"), thCve("mit", "Mitigazione"), h("th", {}, ""))),
@@ -1439,15 +2380,20 @@ function renderCveList() {
           })()),
           h("td", {}, watched.has(c.id) ? h("span", { class: "chain-meta" }, "seguita")
             : h("button", { class: "ghost small", onclick: () => cveWatch(c.id, true) }, "Segui")))))),
-    cveView.items.length === 0
-      ? h("p", { class: "hint" }, "Cache CVE vuota: primo scaricamento da ubuntu.com in corso, la lista si popolerà a breve.")
-      : null
-  );
+    rows.length === 0 && hidden > 0
+      ? h("p", { class: "hint" },
+          `Nessuna CVE vulnerabile o da aggiornare in elenco: ${hidden} corrette sono nascoste dal filtro. `,
+          h("button", { class: "ghost small", onclick: () => { cveHideResolvedSet(false); renderCveBody(); } }, "Mostrale"))
+      : cveView.items.length === 0
+        ? h("p", { class: "hint" }, "Cache CVE vuota: primo scaricamento da ubuntu.com in corso, la lista si popolerà a breve.")
+        : null
+  ));
 }
 
 async function cveLoadWatch() {
   cveView.watch = await call("cve_watched");
   renderCveBody();
+  renderNav();
 }
 
 // Cache locale: la lista arriva subito; ubuntu.com viene interrogato in background
@@ -1456,68 +2402,109 @@ async function cveLoadList() {
   cveView.page = await call("cve_kernel", { limit: 2000 });
   cveView.items = cveView.page.items;
   renderCveBody();
+  if (state.view === "cve") renderHeader();
 }
 
 listenEvent("cve-refreshed", () => {
-  if (!$("#cve-body")) return; // dialog chiuso
+  // la cache locale e' cambiata: se la vista CVE e' aperta rileggila, altrimenti
+  // aggiorna solo il contatore nella barra (i dati nuovi si vedono aprendo la pagina)
+  if (!$("#cve-body")) {
+    cveLoadWatch().then(() => renderNav()).catch(() => {});
+    return;
+  }
   cveLoadWatch().catch(() => {});
   cveLoadList().catch(() => {});
 });
 
 async function cveWatch(id, watch) {
-  await call("cve_watch_set", { id, watch });
-  toast(watch ? `${id} seguita` : `${id} rimossa`);
+  // il backend normalizza l'id (trim + maiuscole) e restituisce la lista: il toast
+  // usa l'id canonico, cosi' "cve-2026-98435" digitato a mano non crea un doppione
+  const ids = (await call("cve_watch_set", { id, watch })) || [];
+  const canon = ids.find((x) => x.toUpperCase() === id.trim().toUpperCase()) || id.trim().toUpperCase();
+  toast(watch ? `${canon} seguita` : `${canon} rimossa`);
+  // Speculare anche nello stato locale: se il reload tarda o fallisce la riga non
+  // resta sullo schermo (era il fastidio: toast "rimossa" e card ancora li').
+  if (cveView.watch && !watch) {
+    cveView.watch.items = cveView.watch.items.filter((c) => c.id.toUpperCase() !== canon);
+    renderCveBody();
+  }
   await cveLoadWatch();
 }
 
-/** Struttura della scheda CVE (dialog generico): titolo, tab e controlli fissi; solo #cve-body scrolla. */
+/** Struttura della vista CVE: titolo, tab e controlli fissi in alto; solo #cve-body scrolla. */
 function cveShell() {
-  infoDialog(
-    [
-      h("h3", {}, "Vulnerabilità Ubuntu"),
-      h("div", { class: "cve-tabs", id: "cve-tabs" }),
-      h("div", { id: "cve-sub" }),
-      h("div", { class: "nft-toolbar cve-toolbar", id: "cve-ctl" }),
-      h("div", { id: "cve-body", class: "cve-body" }, h("p", { class: "hint" }, "Caricamento dalla cache locale…")),
-    ],
-    [
-      h("button", { class: "ghost", onclick: (ev) => showCve(ev.currentTarget) }, "Aggiorna"),
-      closeButton(),
-    ]
+  $("#view").replaceChildren(
+    h("div", { class: "cve-tabs", id: "cve-tabs" }),
+    h("div", { id: "cve-sub" }),
+    h("div", { class: "nft-toolbar cve-toolbar", id: "cve-ctl" }),
+    h("div", { id: "cve-body", class: "cve-body" }, h("p", { class: "hint" }, "Caricamento dalla cache locale…"))
   );
   renderCveBody();
 }
 
-async function showCve(button, keepList = false) {
-  if (keepList && cveView.page) {
-    // dopo una mitigazione: rileggi stato locale e CVE seguite, l'elenco già caricato resta
-    cveShell();
-    await cveLoadMit().catch(() => {});
-    renderCveBody();
-    await cveLoadWatch().catch(() => {});
-    return;
+/** `keepList`: dopo una mitigazione o una verifica, l'elenco già caricato resta. */
+async function cveRefresh(keepList = false) {
+  if (state.view !== "cve") return;
+  if (!keepList) {
+    cveView.items = [];
+    cveView.page = null;
   }
-  cveView.items = [];
-  cveView.page = null;
   cveShell();
   await cveLoadMit().catch(() => {});
   await Promise.allSettled([cveLoadWatch(), cveLoadList()]);
+  if (state.view === "cve") renderHeader();
 }
 
 // ---------- avvio ----------
 
+// cosa renderizza ogni pagina: la vista attiva occupa #view (i dialog restano solo
+// per conferme, anteprima applica e dettagli del report)
+const VIEW_RENDER = {
+  firewall: () => { renderDetail(); renderHeader(); },
+  live: viewLive,
+  nft: viewNft,
+  cve: () => cveRefresh(false),
+  report: () => viewReport(),
+  history: viewHistory,
+};
+
 async function init() {
-  closeOnButtons($("#dlg-rule"));
-  closeOnButtons($("#dlg-set"));
+  for (const id of PANEL_IDS) closeOnButtons($("#" + id));
+  // Esc chiude il pannello: su desktop e' la scorciatoia che la gente prova per prima, e
+  // con i dialog rimossi non c'e' piu' il comportamento nativo a coprirlo.
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape" || !panelIsOpen()) return;
+    ev.preventDefault();
+    const cancel = panelEl().querySelector("[data-cancel]");
+    if (cancel) cancel.click();
+    else closePanel();
+  });
   $("#btn-new-set").addEventListener("click", newSet);
   $("#btn-import").addEventListener("click", (ev) => importLive(ev.currentTarget));
-  $("#btn-live").addEventListener("click", (ev) => showLive(ev.currentTarget));
-  $("#btn-history").addEventListener("click", showHistory);
-  $("#btn-cve").addEventListener("click", (ev) => showCve(ev.currentTarget));
-  $("#btn-nft").addEventListener("click", (ev) => showRuleset(ev.currentTarget));
+  bindImportFileInput();
+  $("#btn-rail").addEventListener("click", railToggle);
   $("#btn-toggle-fw").addEventListener("click", (ev) => toggleFirewall(ev.currentTarget));
 
+  // Ctrl+B nasconde/mostra la barra, come in Orbit (non la usa nessun campo testo qui)
+  document.addEventListener("keydown", (ev) => {
+    if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === "b") {
+      ev.preventDefault();
+      railToggle();
+    }
+  });
+
+  const saved = localStorage.getItem("pyla.view");
+  state.view = PAGES.some((p) => p.view === saved) ? saved : "firewall";
+  railApply();
+  renderNav();
+
   state.info = await call("app_info");
+  // versione in alto a sinistra; il tooltip porta il path del DB, utile nei report
+  const vBadge = $("#app-version");
+  if (vBadge) {
+    vBadge.textContent = "v" + (state.info.version || "?");
+    vBadge.title = `PYLA ${state.info.version || "?"}\ndatabase: ${state.info.db_path}\nhelper: ${state.info.helper_path}`;
+  }
   if (!state.info.helper_installed) {
     const w = $("#helper-warning");
     w.textContent =
@@ -1527,8 +2514,13 @@ async function init() {
   }
   await loadStatus();
   await loadRulesets();
+  if (state.view !== "firewall") {
+    setView(state.view);
+    return;
+  }
   const active = state.rulesets.find((r) => r.active) || state.rulesets[0];
   if (active) await selectRuleset(active.id);
+  else setView("firewall");
 }
 
 init();

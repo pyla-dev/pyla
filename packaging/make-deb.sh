@@ -75,6 +75,12 @@ install -Dm0644 "$ROOT/src-tauri/icons/icon.png" "$STAGE/usr/share/icons/hicolor
 # licenza nel posto atteso da dpkg/lintian: /usr/share/doc/<pkg>/copyright
 install -Dm0644 "$ROOT/LICENSE" "$STAGE/usr/share/doc/$PACKAGE/copyright"
 
+# esempio di file JSONC importabile: senza questo, chi installa il .deb non ha nessun
+# modello da caricare in "Importa da file" (il repository sorgente non e' installato).
+# E' documentazione d'esempio, percio' sta in /usr/share/doc/<pkg>/examples/.
+install -Dm0644 "$ROOT/examples/stealth.jsonc" \
+    "$STAGE/usr/share/doc/$PACKAGE/examples/stealth.jsonc"
+
 SIZE=$(du -sk "$STAGE" --exclude=DEBIAN | cut -f1)
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: pyla

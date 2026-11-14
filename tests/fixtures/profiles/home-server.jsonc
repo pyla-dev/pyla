@@ -1,0 +1,50 @@
+// PYLA profile — "Home server"
+//
+// Goal: a small Ubuntu server at home that must expose exactly two services —
+// SSH and HTTPS — and to a defined management network only. Everything else is
+// discarded silently. Replace the placeholder source net below (192.0.2.0/24,
+// RFC 5737 documentation range) with YOUR management network or VPN pool before
+// applying — otherwise you lock yourself out.
+//
+// UFW defaults assumed (shown in PYLA's status page): default deny inbound.
+// Established/related return traffic is handled by state rules automatically.
+//
+// Before applying, make sure your SSH is NOT on a port you forget: this profile
+// allows 22/tcp only. If sshd listens elsewhere, change dport here, not there.
+{
+  "name": "Home server",
+  "description": "SSH and HTTPS open only to the management network; everything else dropped silently. Edit the source CIDR before applying.",
+  "format_version": 1,
+  "enabled": true,
+  "rules": [
+    // ---- loopback: services bound to localhost (databases, monitoring agents,
+    //      reverse proxies talking to backends) stay untouched ----
+    { "action": "allow", "direction": "in",  "interface": "lo", "proto": "any", "src": "any", "dst": "any", "comment": "loopback in" },
+    { "action": "allow", "direction": "out", "interface": "lo", "proto": "any", "src": "any", "dst": "any", "comment": "loopback out" },
+
+    // ---- management: SSH from the management network ONLY.
+    //      ⚠ EDIT 192.0.2.0/24 → your LAN/VPN CIDR before applying ----
+    { "action": "allow", "direction": "in", "proto": "tcp", "src": "192.0.2.0/24", "dst": "any", "dport": "22", "comment": "ssh from management net (EDIT CIDR)" },
+
+    // ---- served: HTTPS. Open to the world only if the service is meant to be
+    //      public; if it sits behind a reverse proxy or Cloudflare Tunnel, keep
+    //      it restricted to the proxy/VPN and turn this rule off ----
+    { "action": "allow", "direction": "in", "proto": "tcp", "src": "any", "dst": "any", "dport": "443", "comment": "https public (off if proxied)" },
+    //      HTTP → HTTPS redirect, only if you serve plain HTTP too:
+    { "action": "allow", "direction": "in", "proto": "tcp", "src": "any", "dst": "any", "dport": "80", "enabled": false, "comment": "http redirect (off)" },
+
+    // ---- outbound: a server mostly answers; explicit allows keep the essentials
+    //      (DNS, NTP, updates) and leave everything else to your default policy.
+    //      If you run an SMTP relay or P2P service, add what you need — and say
+    //      why in the comment ----
+    { "action": "allow", "direction": "out", "proto": "udp", "src": "any", "dst": "any", "dport": "53", "comment": "dns out" },
+    { "action": "allow", "direction": "out", "proto": "tcp", "src": "any", "dst": "any", "dport": "53", "comment": "dns tcp out" },
+    { "action": "allow", "direction": "out", "proto": "udp", "src": "any", "dst": "any", "dport": "123", "comment": "ntp out" },
+    { "action": "allow", "direction": "out", "proto": "tcp", "src": "any", "dst": "any", "dport": "80",  "comment": "http out (updates)" },
+    { "action": "allow", "direction": "out", "proto": "tcp", "src": "any", "dst": "any", "dport": "443", "comment": "https out (updates)" },
+
+    // ---- active silence: deny (not reject) inbound so closed ports never answer
+    //      a prober with a RST that confirms the host exists ----
+    { "action": "deny", "direction": "in", "proto": "any", "src": "any", "dst": "any", "comment": "everything else: drop silently" }
+  ]
+}

@@ -102,7 +102,7 @@ if [ "$HISTORY" = 1 ]; then
         git grep -InE "$PATTERN" "$c" -- . 2>/dev/null | sed 's/^[0-9a-f]*://' >>"$FOUND" || true
     done
 else
-    grep -rInE --exclude-dir=.git --exclude-dir=target --exclude-dir=.idea \
+    grep -rInE --exclude-dir=.git --exclude-dir=target --exclude-dir=.idea --exclude-dir=node_modules \
         --exclude=Cargo.lock --exclude=sanitize-patterns.local \
         -e "$PATTERN" . >>"$FOUND" || true
 grep -v "sanitize-ignore" "$FOUND" >"$SORTED" || true

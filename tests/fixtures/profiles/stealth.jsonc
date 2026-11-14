@@ -1,0 +1,94 @@
+// PYLA profile — "Silent stealth"
+//
+// Goal: the machine answers nothing that was not asked for. No port reachable from
+// outside, no banners, no pings (echo requests are dropped without replying: no
+// TTL/OS fingerprinting), outbound limited to system services. External attack
+// surface: zero — you get in only from console or from a VPN.
+//
+// What you do NOT need to write here, because UFW does it by itself and PYLA shows
+// it on the "UFW status" page: the established/related state rules (they come back
+// in on their own) and the default deny on inbound traffic
+// (`DEFAULT_INPUT_POLICY=deny`). This set exists to make the behaviour explicit,
+// rule by rule.
+//
+// Note: PYLA's rule model is UFW's tuple model, so an import file CANNOT express
+// two things you often see hand-written in Kali/ufw guides:
+//   - `ufw limit ...` (rate limiting): "limit" in PYLA only means "log and drop",
+//     not "rate-limit". Add the anti-flood rule by hand in UFW — that is why SSH
+//     below appears as a plain, disabled allow.
+//   - ICMP types (echo-request, unreachables...): a rule's ports are TCP/UDP
+//     numbers, not ICMP types. They are covered by the final deny on proto "any".
+//
+// Format accepted by PYLA's "Import from file…" (JSON with comments):
+//   name, description     set metadata (name optional: uses the one chosen in PYLA)
+//   enabled               false = every rule in the file starts disabled
+//   rules[]               action allow|deny|reject|limit, direction in|out (default in),
+//                         proto tcp|udp|any, src/dst "any" | IP | CIDR,
+//                         dport: one port ("22"), a list ("53,80") or a range
+//                         ("6000:7000"): lists and ranges need an explicit proto
+//                         tcp/udp (proto "any" + lists = error); interface omitted =
+//                         all, src/dst also in CIDR form ("192.0.2.0/24"),
+//                         log off|log|log-all, comment (max 120 chars),
+//                         enabled false = rule present but switched off
+{
+  "name": "Silent stealth",
+  "description": "No port reachable from outside: inbound ICMP and orphan packets dropped, every closed port discards without answering. Outbound only to system services.",
+  "format_version": 1,
+  "enabled": true,
+  "rules": [
+    // ---- loopback: local traffic stays free, it is what makes the machine run ----
+    { "action": "allow", "direction": "in",  "interface": "lo", "proto": "any", "src": "any", "dst": "any", "comment": "loopback in" },
+    { "action": "allow", "direction": "out", "interface": "lo", "proto": "any", "src": "any", "dst": "any", "comment": "loopback out" },
+
+    // ---- inbound ICMP: drop without answering. In PYLA a TCP/UDP rule's port is
+    //      a number; ICMP types are not ports and are not written here: the final
+    //      deny on proto "any" already covers them all, so pings get no reply.
+    //      The ICMP replies that genuinely matter (dest-unreachable, time-exceeded
+    //      for traceroute, frag-needed / packet-too-big for PMTUD, redirect) arrive
+    //      as "related" traffic and UFW lets them through on its own: no rule needed. ----
+
+    // ---- outbound: only what a machine that offers no services needs. DNS
+    //      (udp and tcp — large answers travel over TCP), NTP, package updates via
+    //      HTTP/HTTPS, replies to the provider's DHCP. Everything else is blocked
+    //      by the default outbound deny ----
+    { "action": "allow", "direction": "out", "proto": "udp", "src": "any", "dst": "any", "dport": "53", "comment": "dns out" },
+    { "action": "allow", "direction": "out", "proto": "tcp", "src": "any", "dst": "any", "dport": "53", "comment": "dns tcp out" },
+    { "action": "allow", "direction": "out", "proto": "udp", "src": "any", "dst": "any", "dport": "123", "comment": "ntp out" },
+    { "action": "allow", "direction": "out", "proto": "tcp", "src": "any", "dst": "any", "dport": "80", "comment": "http out (package updates)" },
+    { "action": "allow", "direction": "out", "proto": "tcp", "src": "any", "dst": "any", "dport": "443", "comment": "https out" },
+    { "action": "allow", "direction": "out", "proto": "udp", "src": "any", "dst": "any", "dport": "68", "comment": "dhcp client out" },
+    //      IPv6 counterpart of the outbound rules: 546 is the DHCPv6 client port
+    //      (the server sits on 547). It is needed outbound because the server
+    //      replies to ff02::1:2 with source/destination ports swapped; not a
+    //      duplicate of the v4 rule on 68.
+    { "action": "allow", "direction": "out", "proto": "udp", "src": "any", "dst": "any", "dport": "546", "comment": "dhcpv6 client out" },
+
+    // ---- active silence: everything else inbound is dropped without answering.
+    //      `reject` would send a RST or an ICMP unreachable and tell the prober the
+    //      machine exists; `deny` stays silent — that is the "stealth" part. UFW
+    //      places this last, after the allows above ----
+    { "action": "deny", "direction": "in", "proto": "any", "src": "any", "dst": "any", "comment": "closed ports: drop, nothing more" },
+
+    // ---- neighbour traffic (link-local): useful if the machine must be reachable
+    //      on the LAN without manual configuration. OFF by default: a minimal
+    //      install does not use it, and in stealth every extra rule is extra
+    //      attack surface. Port ranges and lists need an explicit proto, so mDNS
+    //      (udp 5353) stands alone. ----
+    { "action": "allow", "direction": "in", "proto": "udp", "src": "fe80::/10", "dst": "any", "dport": "5353", "enabled": false, "comment": "mDNS (only if you want LAN discovery)" },
+    { "action": "allow", "direction": "in", "proto": "udp", "src": "fe80::/10", "dst": "any", "dport": "546:547", "enabled": false, "comment": "dhcpv6 client" },
+    //      A deny on 23 (telnet) is NOT needed in stealth: the final rule on proto
+    //      "any" already covers it. If you write it anyway, the import discards it
+    //      as a duplicate of the more general rule — exactly like UFW does.
+    //      NDP/ICMPv6 is not importable: PYLA's model has proto tcp, udp or any
+    //      only (UFW tuples), so a rule set cannot say "icmp". If you need it, add
+    //      it by hand in UFW (`ufw allow in on <iface> proto ipv6-icmp`).
+
+    // ---- disabled example rule: SSH from the management network. Off in the
+    //      file, re-enabled from the set detail in PYLA when remote access is
+    //      needed (in stealth the normal access is console or VPN).
+    //      The Kali guide suggests `ufw limit 22/tcp`: this is a plain allow
+    //      because rate limiting is outside PYLA's model (see header). If you
+    //      need it, run that command in UFW yourself after the import ----
+    { "action": "allow", "direction": "in", "proto": "tcp", "src": "192.0.2.0/24", "dst": "any", "dport": "22", "enabled": false, "comment": "ssh from management net (off)" }
+  ]
+}

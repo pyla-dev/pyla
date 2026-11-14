@@ -76,7 +76,7 @@ pub fn listeners(root: &Path) -> Vec<Listener> {
     out
 }
 
-fn parse_addr(hex: &str, fam: u8) -> Option<(String, &'static str)> {
+pub(crate) fn parse_addr(hex: &str, fam: u8) -> Option<(String, &'static str)> {
     if fam == 4 {
         let ip = u32::from_str_radix(hex, 16).ok()?.to_le_bytes();
         let scope = if ip[0] == 127 {

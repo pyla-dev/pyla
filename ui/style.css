@@ -1,3 +1,7 @@
+/* L'attributo hidden deve vincere sempre: una regola come `.rail-sub { display: flex }`
+   lo annullerebbe (il riquadro RULE SETS restava visibile fuori da Firewall). */
+[hidden] { display: none !important; }
+
 :root {
   --bg: #f4f6f9;
   --panel: #ffffff;
@@ -82,33 +86,66 @@ input, select {
 }
 input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
-.topbar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
-.spacer { flex: 1; }
-.fw-status { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+/* ---------- shell: barra sinistra a scomparsa (come Orbit) ---------- */
+body { display: block; }
+.app { display: grid; grid-template-columns: auto minmax(0, 1fr); height: 100%; }
+@supports (height: 100dvh) { .app { height: 100dvh; } }   /* barra browser che si nasconde */
 
+.sidebar {
+  width: 262px; min-height: 0; overflow: hidden;
+  background: var(--panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transition: width .16s ease;
+}
+.sidebar.collapsed { width: 0; border-right: 0; }
+@media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+
+.sidebar-brand {
+  display: flex; align-items: center; gap: 9px;
+  height: 54px; padding: 0 12px; flex: 0 0 auto;
+  font-weight: 700; font-size: 16px; letter-spacing: .02em;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.app-version { font: inherit; font-weight: 500; font-size: 12px; color: var(--muted);
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 1px 8px; letter-spacing: .02em; }
+.app-version:empty { display: none; }   /* prima di app_info: niente pillola vuota */
+
+/* pagine + sotto-liste scorrono insieme; stato e lingua restano in fondo.
+   flex column: la lista dei set (unica parte elastica) occupa lo spazio rimasto,
+   cosi' i suoi pulsanti si chiudono sul fondo del riquadro invece di restare a
+   meta' barra con un vuoto sotto. */
+.sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px 8px;
+  display: flex; flex-direction: column; }
+.page-nav { display: flex; flex-direction: column; gap: 1px; padding-bottom: 8px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: transparent; border: 0; border-radius: var(--radius);
+  padding: 8px 10px; text-align: left; color: var(--text); font: inherit; font-size: 13.5px;
+}
+.nav-item:hover { background: var(--panel-2); }
+.nav-item.active { background: var(--panel-2); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+.nav-item .ico { flex: 0 0 18px; display: inline-flex; color: var(--muted); }
+.nav-item.active .ico { color: var(--accent); }
+.nav-item .nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* pillole di stato: le regole base erano sparite con a4047a0 (barra laterale) e da allora
+   "applicato", "ok/errore" e "non gestita" uscivano come testo semplice */
 .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .pill.ok { background: var(--ok-bg); color: var(--ok); }
 .pill.bad { background: var(--bad-bg); color: var(--bad); }
 .pill.warn { background: var(--warn-bg); color: var(--warn); }
 .pill.muted { background: var(--panel-2); color: var(--muted); }
+.nav-item .pill { padding: 0 7px; }
 
-.banner { padding: 8px 16px; font-size: 13px; }
-.banner.warn { background: var(--warn-bg); color: var(--warn); }
-
-.layout { flex: 1; display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
-.sidebar {
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; min-height: 0;
-}
-.sidebar-head { padding: 14px 14px 8px; }
-.ruleset-list { list-style: none; margin: 0; padding: 0 8px; overflow: auto; flex: 1; }
+/* la lista dei set compare solo sotto la pagina Firewall, e riempie la barra:
+   head in alto, elenco che scrolla al suo interno, azioni ancorate in fondo */
+.rail-sub { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+/* min-height: 0 (non 40px): l'elenco deve potersi restringere prima di spingere
+   i pulsanti fuori dal riquadro. Con un minimo fisso, su finestra corta la lista
+   resta a 40px e "Nuovo set"/"Importa da UFW" finiscono sopra il blocco in fondo. */
+.rail-head { padding: 2px 10px 6px; }
+.ruleset-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1 1 auto; min-height: 0; }
 .ruleset-list li {
   padding: 8px 10px; border-radius: var(--radius); cursor: pointer; margin-bottom: 2px;
   display: flex; flex-direction: column; gap: 2px;
@@ -117,14 +154,96 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .ruleset-list li.selected { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
 .ruleset-list .name { font-weight: 600; display: flex; gap: 6px; align-items: center; }
 .ruleset-list .meta { color: var(--muted); font-size: 12px; }
-.sidebar-actions { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-top: 1px solid var(--border); }
+.sidebar-actions { display: flex; flex-direction: column; gap: 6px; padding: 10px 2px 2px; flex: 0 0 auto; }
+/* icone Google Material dentro i pulsanti del riquadro RULE SETS (encrypted_add,
+   sync_arrow_up): allineate al testo, ereditano il colore del bottone */
+.sidebar-actions button { display: inline-flex; align-items: center; gap: 7px; justify-content: flex-start; }
+.btn-ico { flex: 0 0 auto; opacity: .85; }
 
-.detail { overflow: auto; padding: 18px 22px; min-width: 0; }
+/* Etichette del selettore di file nativo: WebKit/GTK le disegna con i propri testi
+   nella lingua di sistema, e non sono raggiungibili da applyLang() (sono un
+   pseudo-elemento). Le forziamo noi con content, agganciando la lingua del documento:
+   cosi' il dialog resta coerente con la UI scelta dall'utente. */
+#import-file { color: var(--muted); font-size: 13px; }
+#import-file::file-selector-button {
+  content: "Scegli file";   /* IT: la lingua di partenza del documento */
+  margin-right: 8px; padding: 5px 10px; border-radius: 6px;
+  background: var(--bg-elev, #2a2f3a); color: var(--fg, #e6e9ef);
+  border: 1px solid var(--border, #3a4150); cursor: pointer;
+}
+#import-file::file-selector-button:hover { filter: brightness(1.12); }
+/* EN: l'etichetta va riscritta perche' WebKit/GTK la prenderebbe dalla lingua di
+   sistema, non da quella della UI. */
+html[lang="en"] #import-file::file-selector-button { content: "Choose File"; }
+/* Il testo "nessun file selezionato" e' generato dal toolkit accanto al bottone e non
+   c'e' pseudo-elemento su cui scrivere: lo lasciamo al toolkit (WebKit lo rende gia' in
+   inglese), per questo sotto NON riscrivo anche quello. */
+
+/* Profili pubblici (github.com/pyla-dev/pyla-profiles): riquadro sempre visibile con
+   titolo e tabella dei profili, nello stile dell'elenco CVE (table.rules.cve: intestazione fissa,
+   pill colorate). Altezza fissa e scroll verticale solo dentro la tabella. */
+.import-files { display: flex; flex-direction: column; gap: 8px; margin: 10px 0;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); }
+.import-files-head { font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.import-files-head .chain-meta { margin-left: 0; font-weight: 400; }
+.profiles-scroll { height: 220px; overflow-y: auto; overflow-x: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); }
+.profiles-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+table.rules.cve.profiles td { vertical-align: top; }
+table.rules.cve.profiles td.p-name { width: 26%; }
+table.rules.cve.profiles td.p-risk { width: 1%; white-space: nowrap; }
+table.rules.cve.profiles td .chain-meta { display: block; margin-left: 0; white-space: nowrap; }
+table.rules.cve.profiles tbody tr { cursor: pointer; }
+table.rules.cve.profiles tbody tr:hover td { background: var(--panel-2); }
+table.rules.cve.profiles tbody tr[aria-selected="true"] td {
+  background: color-mix(in srgb, var(--accent) 14%, transparent); }
+#import-files-note { margin: 0; }
+/* su finestra corta lo spazio che resta non basta per la pila dei due pulsanti:
+   passano a due colonne, cosi' il riquadro resta integro e i pulsanti restano
+   dentro (finestra minima reale 860x560, da tauri.conf.json). */
+@media (max-height: 640px) {
+  .sidebar-actions { display: grid; grid-template-columns: 1fr 1fr; }
+}
+
+.sidebar-nav { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; border-top: 1px solid var(--border); }
+.fw-status { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); font-size: 12.5px; }
+/* pulsante lingua nell'header: resta attaccato a destra e non si
+   schiaccia quando le azioni della pagina riempiono la barra */
+.main-header #btn-lang { flex: 0 0 auto; }
+.lang-btn { justify-content: center; }
+
+.icon-btn { border: 0; background: transparent; color: var(--muted); padding: 6px 8px;
+  border-radius: 6px; display: inline-flex; align-items: center; }
+.icon-btn:hover { border-color: transparent; background: var(--panel-2); color: var(--text); }
+
+/* contenitore principale */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg);
+  /* container query: lo spazio utile del contenuto dipende dalla barra laterale (262px)
+     e dal suo stato, non dalla larghezza della finestra. Una media query guarderebbe la
+     finestra e sbagliarebbe; se il supporto manca la tabella resta a scroll orizzontale. */
+  container-type: inline-size; }
+.main-header { display: flex; align-items: center; gap: 10px; min-height: 52px;
+  padding: 6px 14px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.header-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.header-title #view-title { font-weight: 700; font-size: 16px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.header-sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-sub:empty { display: none; }
+.header-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.header-actions:empty { display: none; }
+
+.spacer { flex: 1; }
+.view { flex: 1; min-height: 0; overflow: auto; padding: 18px 22px; }
+.view[hidden] { display: none; }   /* nascosta mentre un pannello la sostituisce */
+/* viste a elenco (CVE, ruleset nft): scrolla solo il corpo, titoli e filtri fissi */
+.view.fill { display: flex; flex-direction: column; overflow: hidden; }
+.view.fill .cve-body, .view.fill .nft-body { flex: 1; max-height: none; min-height: 0; }
 .empty { color: var(--muted); text-align: center; margin-top: 18vh; line-height: 1.8; }
-.detail-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-.detail-head .title { flex: 1; min-width: 220px; }
-.detail-head .title h1 { margin: 0; font-size: 21px; display: flex; gap: 8px; align-items: center; }
-.detail-head .title p { margin: 2px 0 0; color: var(--muted); }
+.view-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.view-head .title { flex: 1; min-width: 220px; }
+.view-head .title h1 { margin: 0; font-size: 21px; display: flex; gap: 8px; align-items: center; }
+.view-head .title p { margin: 2px 0 0; color: var(--muted); }
 .toolbar { display: flex; gap: 6px; flex-wrap: wrap; }
 
 table.rules { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -148,19 +267,36 @@ table.rules td.comment { color: var(--muted); max-width: 220px; overflow: hidden
 .switch input:checked + span { background: var(--ok); }
 .switch input:checked + span::before { transform: translateX(15px); }
 
-dialog {
-  border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px;
-  background: var(--panel); color: var(--text); width: min(640px, 92vw);
-  box-shadow: 0 18px 50px rgba(0,0,0,.3);
+/* ---------- pannelli: sostituiscono i dialog ----------
+   Nessun popup nell'applicazione: editor regola, set, import da file, info, conferme,
+   anteprima e report sono pannelli dentro <main>. Su telefono un dialog modale largo
+   92vw con campi su due colonne non e' utilizzabile (tastiera copre meta' schermo), e
+   in WebKitGTK il modale non si adatta alla finestra. Il pannello scorre con la pagina,
+   usa tutta la larghezza disponibile e ha una sola via d'uscita (Annulla/Esc). */
+.panel {
+  flex: 1; min-height: 0; overflow: auto; padding: 18px 22px;
+  display: flex; flex-direction: column; gap: 2px;
+  border-top: 1px solid var(--border); background: var(--bg);
 }
-dialog.wide-dialog { width: min(920px, 94vw); }
-dialog::backdrop { background: rgba(10, 14, 20, .45); }
-dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
-dialog label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); margin-top: 20px; }
-dialog label.check input { width: auto; }
+.panel[hidden] { display: none; }
+.panel form, .panel #info-body { max-width: 760px; width: 100%; }
+.panel h3 { margin: 0 0 10px; font-size: 19px; }
+.panel label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+.panel label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); margin-top: 12px; }
+.panel label.check input { width: auto; }
+/* mentre un pannello e' aperto le azioni della pagina sottostante non c'entrano nulla:
+   applicano o ricaricano una vista che non si vede */
+body.panel-open .header-actions { display: none; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 .grid .wide { grid-column: 1 / -1; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+/* dialog import da file: textarea monospazio + riga degli strumenti */
+#import-form textarea { width: 100%; font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12.5px; line-height: 1.45; resize: vertical; }
+/* un solo figlio (il selettore di file): lo spacing verticale, niente allineamenti
+   che servivano per la checkbox "Incolla esempio" ora rimossa */
+.import-file { margin: 8px 0; }
+#import-form code { font-family: var(--mono, ui-monospace, monospace); }
 .error { color: var(--bad); background: var(--bad-bg); padding: 8px 10px; border-radius: 6px; margin: 6px 0 0; white-space: pre-wrap; }
 
 .section { margin: 14px 0 6px; font-weight: 600; }
@@ -182,12 +318,16 @@ ul.diff li.del { color: var(--bad); }
 .toast.bad { background: var(--bad); color: #fff; }
 
 /* ruleset completo */
-.nft-toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px; }
-.nft-toolbar input[type=search] { flex: 1; }
+.nft-toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px; flex-wrap: wrap; }
+.nft-toolbar input[type=search] { flex: 1 1 220px; min-width: 0; }
+.nowrap { white-space: nowrap; }
 .nft-toolbar select { width: auto; }
 .nft-toolbar label.inline { display: flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; white-space: nowrap; color: var(--text); font-size: 13px; }
 .nft-toolbar label.inline input { width: auto; }
-.nft-body { max-height: 62vh; overflow: auto; padding-right: 4px; }
+/* report: le porte solo locali restano leggibili ma passano in secondo piano */
+table.rules.report tr.dim td { color: var(--muted); }
+table.rules.report td .chain-meta { margin-left: 4px; }
+.nft-body { overflow: auto; padding-right: 4px; }
 details.nft-table { margin-bottom: 14px; }
 details.nft-table > summary { cursor: pointer; padding: 6px 0; display: flex; gap: 10px; align-items: center; font-size: 14px; }
 details.nft-chain { margin: 0 0 8px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); scroll-margin-top: 8px; }
@@ -234,7 +374,7 @@ button.small { padding: 2px 8px; font-size: 12px; }
 .cve-tabs .cve-tab:hover { color: var(--text); }
 .cve-tabs .cve-tab.active { background: var(--panel-2); border-color: var(--border); color: var(--text); font-weight: 600; }
 .cve-tabs .cve-tab .pill { padding: 0 7px; }
-.cve-body { max-height: 52vh; overflow: auto; padding-right: 4px; }
+.cve-body { overflow: auto; padding-right: 4px; }
 .cve-toolbar input.cve-filter { flex: 1 1 auto; min-width: 0; width: auto; }
 .cve-toolbar input.cve-id-input { flex: 0 0 190px; width: 190px; }
 .cve-toolbar button { white-space: nowrap; flex: 0 0 auto; }
@@ -250,3 +390,107 @@ td.nowrap, .nowrap { white-space: nowrap; }
 .mit-box .facts { margin: 6px 0; padding-left: 18px; }
 .mit-box .facts li { margin: 2px 0; }
 .mit-box .hint { margin: 4px 0; }
+/* Nota di mitigazione Ubuntu: conserva la struttura del testo dell'advisory
+   (pallini, passi numerati, comandi), che in un <p> viene collassata. */
+.mit-note { margin: 8px 0 0; padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--panel); }
+.mit-note-head { display: flex; align-items: center; gap: 8px; }
+.mit-note p { margin: 5px 0; }
+.mit-note .mit-facts { margin: 5px 0; padding-left: 18px; }
+.mit-note .mit-facts li { margin: 3px 0; }
+.mit-note .mit-step { margin: 6px 0 2px; }
+.mit-note .mit-cmd { margin: 3px 0 6px; padding: 6px 8px; background: var(--panel-2);
+  border-radius: 6px; font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* "Descrizione completa": stesso riquadro e stesso font della nota di mitigazione
+   (il testo e' prosa, non comandi: niente monospazio). summary = intestazione. */
+details.mit-note > summary.mit-note-head { list-style: none; }
+details.mit-note > summary.mit-note-head::-webkit-details-marker { display: none; }
+details.mit-note > summary.mit-note-head::before { content: "\25B8"; color: var(--muted); }
+details.mit-note[open] > summary.mit-note-head::before { content: "\25BE"; }
+.mit-note .mit-text { margin: 6px 0 2px; max-height: 320px; overflow: auto;
+  white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---------- finestra stretta: la barra diventa cassetto ---------- */
+@media (max-width: 820px) {
+  /* la barra diventa fissa e quindi esce dal flusso: se la griglia resta a due colonne,
+     main finisce nella colonna "auto" e si riduce a zero (con container-type: inline-size
+     la colonna auto non puo' piu' allargarsi ai contenuti: misurato, .main scendeva a 0px
+     e il contenuto sforava). Unica colonna: main prende tutta la finestra. */
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .sidebar {
+    position: fixed; z-index: 30; top: 0; bottom: 0; left: 0;
+    width: min(262px, 82vw);
+    box-shadow: 0 12px 34px rgba(0,0,0,.35);
+  }
+  .sidebar.collapsed { width: 0; box-shadow: none; }
+  .view { padding: 14px; }
+  .main-header { padding: 6px 10px; }
+}
+.drawer-edge { position: fixed; z-index: 29; left: 0; top: 0; bottom: 0; width: 14px; cursor: pointer; }
+.drawer-edge::after { content: ""; position: absolute; left: 3px; top: 50%; width: 4px; height: 46px;
+  margin-top: -23px; border-radius: 2px; background: var(--border); }
+.drawer-backdrop { position: fixed; z-index: 29; inset: 0; background: rgba(10,14,20,.45); }
+
+/* ---------- tabella regole a schede quando lo spazio utile non basta ----------
+   Misurato con Chrome headless: la tabella regole non scende sotto 720px di contenuto,
+   quindi con 44px di padding il punto di rottura e' ~764px di area utile. Il container
+   query prende proprio quell'area, barra laterale inclusa o esclusa che sia. */
+/* Le etichette delle celle arrivano da data-label, messo nel rendering (RULE_COLS in
+   ui/app.js): senza di esse le schede resterebbero senza il nome del campo. */
+@container (max-width: 780px) {
+  table.rules.plain thead { display: none; }
+  table.rules.plain tr {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px;
+    padding: 9px 10px; border-bottom: 1px solid var(--border);
+  }
+  /* le colonne "width: 1%" e "width: 28px" della tabella hanno senso solo nel layout
+     tabellare: in una griglia diventano la larghezza della cella (5px) e schiacciano
+     l'interruttore. Va annullata esplicitamente, non basta grid-column. */
+  table.rules.plain td { border: 0; padding: 1px 0; width: auto; white-space: normal; }
+  table.rules.plain td::before {
+    content: attr(data-label) " "; display: block; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  }
+  table.rules.plain td.num, table.rules.plain td.ctl { grid-column: 1 / -1; width: auto; }
+  table.rules.plain td.ctl { display: flex; gap: 10px; }
+  table.rules.plain td.comment { grid-column: 1 / -1; max-width: none; white-space: normal; }
+  /* CVE e ruleset nft restano tabella: troppi campi per una scheda, ma con scroll
+     proprio dentro .view (700px minimi) invece di una scheda per riga */
+  table.rules.cve, table.rules.nft { min-width: 700px; }
+}
+
+/* ---------- telefono: tutto a colonna, tocchi grandi ---------- */
+@media (max-width: 820px) {
+  .grid { grid-template-columns: 1fr; }        /* editor regola: 11 campi su una colonna */
+  .panel { padding: 14px; }
+  .main-header { flex-wrap: wrap; }
+  .header-title { min-width: 45%; }
+  .header-actions { flex-wrap: wrap; gap: 6px; }
+  .toolbar { width: 100%; }
+  .toolbar button { flex: 1 1 auto; }
+  /* le azioni del pannello sono l'unica via d'uscita: larghe e alte, non due pulsantini
+     a destra che su un pollice si perdono */
+  .panel .actions { position: sticky; bottom: 0; padding: 10px 0 4px;
+    background: linear-gradient(to top, var(--bg) 65%, transparent); }
+  .panel .actions button { flex: 1 1 40%; min-height: 44px; }
+  .panel .toolbar button { min-height: 40px; }
+  table.rules.plain td.ctl { gap: 12px; }
+}
+
+/* Touch: sui campi serve font >=16px o il browser fa zoom automatico quando ci si
+   mette il cursore; e i comandi della tabella (interruttore, su/giu, modifica) devono
+   prendere almeno 40px. */
+/* (pointer: coarse) da solo non basta: un webview su telefono puo' dichiararsi fine e
+   le larghezze piccole vanno servite comunque. Unire le due condizioni in un blocco
+   unico evita anche di duplicare le regole dell'interruttore. */
+@media (pointer: coarse), (max-width: 820px) {
+  input, select, textarea { font-size: 16px; }
+  button, .icon-btn { min-height: 40px; }
+  .toolbar button { min-height: 40px; }
+  #import-form textarea { min-height: 200px; }
+  table.rules button.icon { min-width: 38px; min-height: 38px; }
+  .switch { width: 46px; height: 26px; }
+  .switch span::before { width: 22px; height: 22px; left: 2px; top: 2px; }
+  .switch input:checked + span::before { transform: translateX(20px); }
+}

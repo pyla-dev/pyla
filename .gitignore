@@ -5,3 +5,6 @@
 # Pattern specifici del gate di sanitizzazione: contengono nome, dominio
 # aziendale e hostname, quindi non vanno nel repository pubblico.
 packaging/sanitize-patterns.local
+# dipendenze degli smoke test UI (jsdom): restano locali, il repository
+# pubblico non le riceve
+node_modules/

@@ -1,0 +1,12 @@
+{
+  "name": "pyla-ui-tests",
+  "private": true,
+  "type": "module",
+  "description": "Smoke test della UI di PYLA (jsdom). Nessuna dipendenza dall'app: i mock sostituiscono i comandi Tauri.",
+  "scripts": {
+    "test": "node ui-smoke.mjs && node ui-smoke-en.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}

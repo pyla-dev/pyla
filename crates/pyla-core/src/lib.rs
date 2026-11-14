@@ -5,12 +5,15 @@
 //! (avviato come root tramite pkexec).
 
 pub mod exposure;
+pub mod import;
+pub mod listening;
 pub mod mitigation;
 pub mod model;
 pub mod nft;
 pub mod plan;
 pub mod ufw;
 
+pub use import::{Imported, Meta};
 pub use model::{Action, Direction, LogLevel, Proto, RuleSpec, ValidationError};
 pub use plan::{plan, Plan};
 pub use ufw::{LiveRule, UfwStatus};

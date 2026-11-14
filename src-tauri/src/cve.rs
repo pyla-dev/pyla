@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 
 const API: &str = "https://ubuntu.com/security/cves";
 pub const PAGE: usize = 20; // massimo consentito dall'API
-const UA: &str = concat!("pyla/", env!("CARGO_PKG_VERSION"), " (+firewall GUI)");
+pub(crate) const UA: &str = concat!("pyla/", env!("CARGO_PKG_VERSION"), " (+firewall GUI)");
 
 /// Durata dei dati in cache: oltre questa soglia la prossima lettura avvia
 /// un rinfresco in background (i dati vecchi vengono mostrati finché non arriva il nuovo).
@@ -406,16 +406,16 @@ pub fn refresh_watch(ids: &[String]) -> Result<usize, String> {
     }
     if !ok_ids.is_empty() {
         let key = "watch";
-        let mut all = cache()?
-            .cve_cache_list(key)?
-            .map(|l| l.ids)
-            .unwrap_or_default();
-        for id in &ok_ids {
+        // L'elenco in cache deve rispecchiare la watch list CORRENTE (che `ids` e',
+        // letta da spawn_cve_refresh), non unire anche i membri vecchi: altrimenti
+        // le CVE rimosse restano in cve_cache_member a fare da spettro nel tab.
+        let mut all: Vec<String> = Vec::new();
+        for id in ids {
             if !all.contains(id) {
                 all.push(id.clone());
             }
         }
-        // conserva anche i membri già in cache ma non aggiornati adesso
+        // conserva anche i raw gia' in cache ma non aggiornati adesso
         let existing = cache()?.cve_cache_raw(&all)?;
         for (id, raw) in existing {
             raws.entry(id).or_insert(raw);
@@ -427,19 +427,26 @@ pub fn refresh_watch(ids: &[String]) -> Result<usize, String> {
 
 /// Le seguite, lette dalla cache (istantaneo). `Err` solo per errori del DB.
 pub fn watched_snapshot() -> Result<(System, Vec<CveItem>), String> {
+    let db = cache()?;
     let sys = system()?;
-    let ids = cache()?
-        .cve_cache_list("watch")?
-        .map(|l| l.ids)
-        .unwrap_or_default();
-    let raws = cache()?.cve_cache_raw(&ids)?;
-    let items = ids
+    let items = watched_from(&db, &sys)?;
+    Ok((sys, items))
+}
+
+/// Le seguite si vedono dalla LISTA di watch (`setting.cve_watch`): la cache e' solo
+/// il testo grezzo gia' scaricato. Prima la vista leggeva `cve_cache_member` con
+/// key `watch`, che accumulava anche le CVE smesse: per questo la ✕ diceva "rimossa"
+/// (la lista era aggiornata) ma la riga restava in schermo finche' il thread di
+/// refresh non sovrascriveva l'elenco in cache.
+pub fn watched_from(db: &Db, sys: &System) -> Result<Vec<CveItem>, String> {
+    let ids = db.cve_watch()?;
+    let raws = db.cve_cache_raw(&ids)?;
+    Ok(ids
         .iter()
         .filter_map(|id| raws.get(id))
         .filter_map(|raw| serde_json::from_str::<ApiCve>(raw).ok())
-        .map(|c| item(c, &sys))
-        .collect();
-    Ok((sys, items))
+        .map(|c| item(c, sys))
+        .collect())
 }
 
 pub fn valid_id(id: &str) -> bool {
@@ -462,6 +469,66 @@ mod tests {
         assert!(!valid_id("CVE-26-98432"));
         assert!(!valid_id("CVE-2026-98432; rm"));
         assert!(!valid_id("cve-2026-98432"));
+    }
+
+    /// Regressione della ✕ sul tab "Seguite": togliere una CVE deve toglierla dalla
+    /// vista anche se il suo raw resta in cache (era il bug: toast "rimossa" e riga
+    /// ancora li', perche' la vista leggeva i membri della cache).
+    #[test]
+    fn watched_follows_the_watch_list() {
+        let mut db = Db::open(std::path::Path::new(":memory:")).unwrap();
+        let sys = System {
+            release: "resolute".into(),
+            kernel: "6.14.0-27".into(),
+            package: "linux".into(),
+            version: "6.14.0-27".into(),
+        };
+        let raw = |id: &str| {
+            serde_json::to_string(&serde_json::json!({
+                "id": id,
+                "published": "2026-11-01T00:00:00Z",
+                "priority": "high",
+                "description": "In the Linux kernel, the following vulnerability has been resolved:\nx",
+                "packages": [{"name": "linux", "statuses": [{"release_codename": "resolute",
+                    "status": "vulnerable", "description": "6.14.0-28"}]}]
+            }))
+            .unwrap()
+        };
+        let ids = vec!["CVE-2026-98432".to_string(), "CVE-2026-98376".to_string()];
+        let raws: std::collections::HashMap<String, String> =
+            ids.iter().map(|i| (i.clone(), raw(i))).collect();
+        db.cve_cache_store("watch", ids.len(), &ids, &raws, true)
+            .unwrap();
+
+        db.set_cve_watch(&ids).unwrap();
+        assert_eq!(
+            watched_from(&db, &sys).unwrap().len(),
+            2,
+            "entrambe seguite"
+        );
+
+        db.set_cve_watch(&["CVE-2026-98432".to_string()]).unwrap();
+        let one = watched_from(&db, &sys).unwrap();
+        assert_eq!(
+            one.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
+            ["CVE-2026-98432"],
+            "rimossa una: in vista resta solo l'altra"
+        );
+
+        db.set_cve_watch(&[]).unwrap();
+        assert!(
+            watched_from(&db, &sys).unwrap().is_empty(),
+            "rimuovendo tutto il tab si svuota"
+        );
+        assert_eq!(
+            db.cve_cache_raw(&ids).unwrap().len(),
+            2,
+            "il grezzo resta in cache per ri-uso"
+        );
+
+        // ri-seguirla la fa ricomparire senza doverla riscaricare
+        db.set_cve_watch(&ids).unwrap();
+        assert_eq!(watched_from(&db, &sys).unwrap().len(), 2);
     }
 
     #[test]

@@ -33,7 +33,7 @@ git -C "$ROOT" fetch "$REMOTE" "$BRANCH"
 rm -rf "$WORK"
 git -C "$ROOT" worktree add -f "$WORK" FETCH_HEAD >/dev/null 2>&1
 
-rsync -a --delete --exclude=.git --exclude=target --exclude=.idea "$ROOT/" "$WORK/"
+rsync -a --delete --exclude=.git --exclude=target --exclude=.idea --exclude=node_modules --exclude=tests/node_modules "$ROOT/" "$WORK/"
 # La landing page vive nel repository pyla-dev/pyla.space (pyla.space): il repository
 # di codice non deve contenere gli artefatti del sito (CNAME, pagine HTML di root).
 # docs/ invece RESTA: contiene gli ADR, che appartengono al codice (il README li cita).

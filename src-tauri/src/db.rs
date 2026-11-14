@@ -344,6 +344,37 @@ impl Db {
         Ok(id)
     }
 
+    /// Crea un set con regole che possono partire disabilitate (`Some((spec, false))`)
+    /// o essere assenti dall'insieme (`None`, es. regola spenta nel file importato).
+    /// La posizione segue l'ordine del file: chi importa vede le regole nell'ordine
+    /// in cui le ha scritte, con gli spazi lasciati da quelle disabilitate.
+    pub fn create_ruleset_mixed(
+        &mut self,
+        name: &str,
+        description: &str,
+        specs: &[Option<(RuleSpec, bool)>],
+    ) -> Result<i64> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("il nome del set è obbligatorio".into());
+        }
+        let tx = self.conn.transaction().map_err(e)?;
+        tx.execute(
+            "INSERT INTO ruleset(name, description) VALUES (?1, ?2)",
+            params![name, description.trim()],
+        )
+        .map_err(e)?;
+        let id = tx.last_insert_rowid();
+        for (i, entry) in specs.iter().enumerate() {
+            let position = i as i64 + 1;
+            if let Some((spec, enabled)) = entry {
+                insert_rule(&tx, id, position, *enabled, spec).map_err(e)?;
+            }
+        }
+        tx.commit().map_err(e)?;
+        Ok(id)
+    }
+
     /// Copia un set (tutte le regole, anche quelle disabilitate).
     pub fn copy_ruleset(&mut self, from: i64, name: &str, description: &str) -> Result<i64> {
         let rules = self.rules(from)?;

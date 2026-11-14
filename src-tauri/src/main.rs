@@ -3,6 +3,7 @@
 mod cve;
 mod db;
 mod helper;
+mod profiles;
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -34,6 +35,9 @@ struct AppInfo {
     helper_installed: bool,
     helper_path: &'static str,
     db_path: String,
+    /// Versione del binario in esecuzione (dal workspace Cargo, la stessa del
+    /// `.deb` e di `tauri.conf.json`): la UI la mostra in alto a sinistra.
+    version: &'static str,
 }
 
 #[tauri::command]
@@ -42,6 +46,7 @@ fn app_info(state: State<AppState>) -> AppInfo {
         helper_installed: helper::installed(),
         helper_path: HELPER_PATH,
         db_path: state.db_path.display().to_string(),
+        version: env!("CARGO_PKG_VERSION"),
     }
 }
 
@@ -153,6 +158,59 @@ async fn import_live(state: State<'_, AppState>, name: String) -> Res<i64> {
         with_db(&state, |db| db.set_active_ruleset(id))?;
     }
     Ok(id)
+}
+
+/// Esito di un import da file: il set creato e il conteggio delle regole, così la
+/// UI può dire con precisione quante ne ha messe attive e quante spente.
+#[derive(Serialize)]
+struct ImportFileOutcome {
+    id: i64,
+    name: String,
+    rules: usize,
+    disabled: usize,
+}
+
+/// Profili pubblici del repository GitHub `pyla-dev/pyla-profiles` (solo gli id).
+#[tauri::command]
+async fn list_profiles() -> Res<Vec<profiles::Profile>> {
+    blocking(profiles::list).await
+}
+
+/// Contenuto di un profilo, scaricato dal repository: va nella textarea dell'import,
+/// quindi l'utente lo vede prima di importarlo. Si passa l'id, mai un URL.
+#[tauri::command]
+async fn read_profile(id: String) -> Res<String> {
+    blocking(move || profiles::read(&id)).await
+}
+
+#[tauri::command]
+async fn import_file(
+    state: State<'_, AppState>,
+    text: String,
+    fallback_name: String,
+) -> Res<ImportFileOutcome> {
+    // Il parsing si fa qui, prima di toccare il database: l'errore arriva al
+    // frontend con la riga del file (es. "regola 7: azione non valida ...").
+    let parsed = pyla_core::import::parse(&text, &fallback_name).map_err(|e| e.to_string())?;
+    // `entries_with_state` mantiene l'ordine del file e distingue le regole spente
+    // da quelle proprio escluse: le prime finiscono in PYLA disabilitate.
+    // `entries_with_state` mantiene l'ordine del file e lo stato di ogni regola:
+    // quelle spente finiscono in PYLA come righe disabilitate, non cancellate.
+    // `entries_with_state` mantiene l'ordine del file e lo stato di ogni regola: le
+    // regole spente nel file finiscono in PYLA come righe disabilitate, non cancellate.
+    let entries = parsed.entries_with_state();
+    let (active, disabled) = parsed.counts();
+    let name_in = parsed.meta.name.clone();
+    let description = parsed.meta.description.clone();
+    let id = with_db(&state, move |db| {
+        db.create_ruleset_mixed(&name_in, &description, &entries)
+    })?;
+    Ok(ImportFileOutcome {
+        id,
+        name: parsed.meta.name,
+        rules: active,
+        disabled,
+    })
 }
 
 #[derive(Serialize)]
@@ -362,6 +420,20 @@ async fn exposure_check() -> Res<Vec<pyla_core::exposure::Exposure>> {
     Ok(pyla_core::exposure::assess(&ls, &r.text))
 }
 
+/// Report dei servizi in ascolto (come la scheda Report di Gufw). Senza
+/// `privileged` legge /proc come utente: nessuna password, ma i processi degli
+/// altri utenti restano senza nome. Con `privileged` passa dall'helper (root).
+#[tauri::command]
+async fn listening_report(privileged: Option<bool>) -> Res<serde_json::Value> {
+    if privileged.unwrap_or(false) {
+        // JSON dell'helper inoltrato com'è: stessa forma di `Report`
+        blocking(|| helper::call("listening", None)).await
+    } else {
+        let r = blocking(|| Ok(pyla_core::listening::report(Path::new("/"), false))).await?;
+        serde_json::to_value(r).map_err(|e| e.to_string())
+    }
+}
+
 /// Attiva o rimuove una mitigazione tramite l'helper (chiede l'autenticazione).
 #[tauri::command]
 async fn mitigate(id: String, on: bool) -> Res<serde_json::Value> {
@@ -402,6 +474,9 @@ fn main() {
             history,
             live_status,
             import_live,
+            import_file,
+            list_profiles,
+            read_profile,
             preview,
             apply,
             set_firewall,
@@ -413,6 +488,7 @@ fn main() {
             mitigation_states,
             exposure_check,
             mitigate,
+            listening_report,
         ])
         .run(tauri::generate_context!())
         .expect("avvio di PYLA");

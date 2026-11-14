@@ -47,6 +47,7 @@ offers a one-click, fully reversible **temporary mitigation** until the patched 
 | 🧾 | **Apply history** | Every apply is logged with its outcome, command log and before/after snapshot. |
 | 🧱 | **Full kernel ruleset** | Read-only `nft list ruleset` browser: tables and chains grouped by owner (UFW, Docker, libvirt, kernel), packet/byte counters, filter, clickable `jump`/`goto` targets. |
 | 📡 | **Exposure check** | Every TCP listener on the machine (`/proc/net/tcp{,6}`) evaluated against the **live** nftables ruleset, with IPv4 and IPv6 judged separately: a dual-stack socket on `::` can be reachable on one family and dropped on the other. Verdicts are `blocked`, `exposed`, `conditionally exposed` (interface-scoped rules) or `local`. |
+| 📋 | **Listening report** | Like Gufw's *Report* tab: every listening TCP socket and unconnected UDP socket (`/proc/net/{tcp,udp}{,6}`) with address scope, owning process and user. Read without a password for your own processes; *Show all processes* reads the rest as root through the helper. One click opens a pre-filled `allow` rule for that port in the selected set. |
 | 🛡️ | **CVE intelligence** | Live data from the Ubuntu Security API: watched CVEs plus open *high*/*critical* kernel CVEs for your release, with a verdict computed against the installed kernel package. |
 | 🩹 | **Temporary mitigations** | Subsystem-level, reversible hardening (sysctl or module blocking) for kernel CVEs that are still unpatched, with an exposure check before and after. |
 | 🔐 | **Least privilege** | The UI never runs as root. A small, audited helper is invoked through polkit and accepts only validated, allow-listed operations. |
@@ -78,8 +79,8 @@ The workspace is split into three crates:
 
 | Crate | Role |
 |---|---|
-| [`crates/pyla-core`](crates/pyla-core) | Pure logic, no side effects: rule model and validation, parser of UFW `### tuple ###` lines, apply planner, nftables text parser, CVE-to-subsystem classifier and mitigation registry. Shared by the app and the helper. |
-| [`crates/pyla-helper`](crates/pyla-helper) | The only privileged component. Commands: `status`, `apply`, `enable`, `disable`, `ruleset`, `mitigate`. Runs binaries by absolute path with a cleared environment and never through a shell. |
+| [`crates/pyla-core`](crates/pyla-core) | Pure logic, no side effects: rule model and validation, parser of UFW `### tuple ###` lines, apply planner, nftables text parser, listening-socket reader, CVE-to-subsystem classifier and mitigation registry. Shared by the app and the helper. |
+| [`crates/pyla-helper`](crates/pyla-helper) | The only privileged component. Commands: `status`, `apply`, `enable`, `disable`, `ruleset`, `mitigate`, `listening` (read-only). Runs binaries by absolute path with a cleared environment and never through a shell. |
 | [`src-tauri`](src-tauri) | The desktop application: Tauri commands, SQLite persistence, Ubuntu Security API client. |
 | [`ui`](ui) | Framework-free front end (no bundler, strict CSP). |
 | [`packaging`](packaging) | polkit policy, helper installer, desktop entry installer. |
@@ -146,11 +147,17 @@ Releases: <https://github.com/pyla-dev/pyla/releases/latest> — a self-containe
 privileged helper, the polkit policy, the desktop entry and the icons.
 
 ```sh
+# the asset name carries the release version: check the release page for the newest one
 curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.1_amd64.deb
 curl -LO https://github.com/pyla-dev/pyla/releases/latest/download/pyla_0.2.1_amd64.deb.sha256
 sha256sum -c pyla_0.2.1_amd64.deb.sha256          # must print "OK" before installing
 sudo apt install ./pyla_0.2.1_amd64.deb
 ```
+
+> The newest **published** release is v0.2.1. Newer versions exist in this repository's changelog and may only
+> be available as a local build: `packaging/make-deb.sh` writes `target/dist/pyla_<version>_amd64.deb`, where
+> `<version>` comes from `src-tauri/tauri.conf.json` (kept in sync with `[workspace.package] version` in the
+> root `Cargo.toml`).
 
 > **Upgrading from the old *Argo* build?** Close the app, then from a clone of this repository run the
 > migration script before the first launch. It moves the helper, the polkit policy, the mitigation state
