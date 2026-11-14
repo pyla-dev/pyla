@@ -294,6 +294,9 @@ PYLA is maintained by the **pyla-dev** organisation. The design and implementati
 with **Claude** (Anthropic) working in Claude Code, under human direction, review and real-world
 validation on production machines.
 
+Additional help came from **Orbit**, a self-hosted AI agent, and from **Qwen3.8** (Qwen team, Alibaba
+Cloud), a model run on local hardware.
+
 ## Maintainers
 
 Project governance, releases and security triage: **pyla-dev** — <https://github.com/pyla-dev>.
